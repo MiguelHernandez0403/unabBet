@@ -10,6 +10,7 @@ import java.util.UUID;
 public class Usuario {
     
     private String id;
+    private String uid;
     private String nombre;
     private String apellido;
     private String correo;
@@ -20,8 +21,9 @@ public class Usuario {
     private List<Apuesta> historialApuestas;
     private List<Lugar> lugaresRegistrados;
 
-    public Usuario(String nombre, String apellido, String correo, String contraseña, String carrera, int semestre) {
+    public Usuario(String uid,String nombre, String apellido, String correo, String contraseña, String carrera, int semestre) {
         this.id = UUID.randomUUID().toString(); 
+        this.uid = uid;
         this.nombre = nombre;
         this.apellido = apellido;
         this.correo = correo;
@@ -33,9 +35,10 @@ public class Usuario {
         this.lugaresRegistrados = new ArrayList<>();
     }
 
-    public Usuario(String id, String nombre, String apellido, String correo, String contraseña, 
+    public Usuario(String id,String uid, String nombre, String apellido, String correo, String contraseña, 
                   String carrera, int semestre, double saldoAPUNAB) {
         this.id = id;
+        this.uid = uid;
         this.nombre = nombre;
         this.apellido = apellido;
         this.correo = correo;
@@ -47,8 +50,9 @@ public class Usuario {
         this.lugaresRegistrados = new ArrayList<>();
     }
     
-    public boolean registrarse(String nombre, String apellido, String correo, String contraseña, String carrera, int semestre) {
+    public boolean registrarse(String uid,String nombre, String apellido, String correo, String contraseña, String carrera, int semestre) {
 
+        this.uid = uid;
         this.nombre = nombre;
         this.apellido = apellido;
         this.correo = correo;
@@ -68,7 +72,10 @@ public class Usuario {
         return this.saldoAPUNAB;
     }
     
-    public boolean actualizarPerfil(String nombre, String apellido, String carrera, int semestre) {
+    public boolean actualizarPerfil(String uid, String nombre, String apellido, String carrera, int semestre) {
+        if (uid != null && !uid.trim().isEmpty()) {
+            this.nombre = nombre;
+        }
         if (nombre != null && !nombre.trim().isEmpty()) {
             this.nombre = nombre;
         }
@@ -209,6 +216,7 @@ public class Usuario {
     public String toString() {
         return "Usuario{" +
                 "id='" + id + '\'' +
+                ",uid='" + uid + "\'" +
                 ", nombre='" + nombre + '\'' +
                 ", apellido='" + apellido + '\'' +
                 ", correo='" + correo + '\'' +
