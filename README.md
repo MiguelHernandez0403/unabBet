@@ -3,6 +3,19 @@ UnabBet+ una aplicacion de apuestas de la Universidad Autónoma de Bucaramanga (
 
 Miguel:
 
+11/5/2025
+
+Se crearon las clases Usuario y Lugar con sus respectivos atributos, constructores, y metodos. A los métodos se crearon metodos basicos tales como hashCode(), equals() y toString().
+
+Clase Usuario:
+-Se crearon métodos para la gestión de la cuenta, como inicio de sesion, actualización de perfil o cambio de contraseña.
+-Se añadieron los metodos para el calculo de los apunab y sus respectivas operaciones.
+
+
+Clase Lugar: 
+-Se crearon método para la gestión de los juegos realizados en los establecimientos 
+-Se implemento un sistema de calificaciones básico
+
 
 
 Karol:
