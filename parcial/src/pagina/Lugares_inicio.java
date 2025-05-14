@@ -118,14 +118,14 @@ public class Lugares_inicio extends javax.swing.JFrame {
             }
         });
 
-        notificaciones.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/usuario.png"))); // NOI18N
+        notificaciones.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/notificacion.png"))); // NOI18N
         notificaciones.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 notificacionesMouseClicked(evt);
             }
         });
 
-        usuario_im.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/icons8-usuario-96.png"))); // NOI18N
+        usuario_im.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/usuario_96.png"))); // NOI18N
         usuario_im.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 usuario_imMouseClicked(evt);
@@ -139,7 +139,7 @@ public class Lugares_inicio extends javax.swing.JFrame {
             }
         });
 
-        traduccion.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/translation.png"))); // NOI18N
+        traduccion.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/trad.png"))); // NOI18N
         traduccion.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 traduccionMouseClicked(evt);
@@ -656,7 +656,7 @@ public class Lugares_inicio extends javax.swing.JFrame {
 
     private void darse_baja1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_darse_baja1ActionPerformed
         // TODO add your handling code here:
-        Darse_baja_lugares ventana = new Darse_baja_lugares();
+        Darse_baja ventana = new Darse_baja();
                 ventana.setVisible(true);
                 this.dispose();
     }//GEN-LAST:event_darse_baja1ActionPerformed
@@ -670,7 +670,7 @@ public class Lugares_inicio extends javax.swing.JFrame {
 
     private void darse_baja2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_darse_baja2ActionPerformed
         // TODO add your handling code here:
-        Darse_baja_lugares ventana = new Darse_baja_lugares();
+        Darse_baja ventana = new Darse_baja();
                 ventana.setVisible(true);
                 this.dispose();
     }//GEN-LAST:event_darse_baja2ActionPerformed
@@ -688,7 +688,7 @@ public class Lugares_inicio extends javax.swing.JFrame {
 
     private void darse_baja3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_darse_baja3ActionPerformed
         // TODO add your handling code here:
-        Darse_baja_lugares ventana = new Darse_baja_lugares();
+        Darse_baja ventana = new Darse_baja();
                 ventana.setVisible(true);
                 this.dispose();
     }//GEN-LAST:event_darse_baja3ActionPerformed

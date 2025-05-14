@@ -97,7 +97,6 @@ public class Ranking extends javax.swing.JFrame {
         jComboBox1 = new javax.swing.JComboBox<>();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setPreferredSize(new java.awt.Dimension(1201, 718));
 
         jPanel1.setBackground(new java.awt.Color(61, 61, 234));
 
@@ -114,14 +113,14 @@ public class Ranking extends javax.swing.JFrame {
             }
         });
 
-        notificaciones.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/usuario.png"))); // NOI18N
+        notificaciones.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/notificacion.png"))); // NOI18N
         notificaciones.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 notificacionesMouseClicked(evt);
             }
         });
 
-        usuario_im.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/icons8-usuario-96.png"))); // NOI18N
+        usuario_im.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/usuario_96.png"))); // NOI18N
         usuario_im.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 usuario_imMouseClicked(evt);
@@ -135,7 +134,7 @@ public class Ranking extends javax.swing.JFrame {
             }
         });
 
-        traduccion.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/translation.png"))); // NOI18N
+        traduccion.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/trad.png"))); // NOI18N
         traduccion.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 traduccionMouseClicked(evt);
