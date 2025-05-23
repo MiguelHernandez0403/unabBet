@@ -1,7 +1,6 @@
 package back_end.Excepciones;
 
-
-public class PersistenciaException extends Exception{
+public class PersistenciaException extends Exception {
 
     public PersistenciaException() {
         super("Error de persistencia de datos");
@@ -14,5 +13,5 @@ public class PersistenciaException extends Exception{
     public PersistenciaException(String message, Throwable cause) {
         super(message, cause);
     }
-    
+
 }//TODO: documentar en el readme
