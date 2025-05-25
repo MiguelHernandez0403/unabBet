@@ -4,6 +4,9 @@
  */
 package pagina;
 
+import back_end.Classes.Usuario;
+import back_end.Excepciones.PersistenciaException;
+import back_end.Classes.Usuario;
 import java.awt.Graphics;
 import java.awt.Image;
 import javax.swing.ImageIcon;
@@ -35,7 +38,6 @@ public class Login_1 extends javax.swing.JFrame {
         username = new javax.swing.JTextField();
         jLabel3 = new javax.swing.JLabel();
         login = new javax.swing.JButton();
-        clean = new javax.swing.JButton();
         registarte = new javax.swing.JLabel();
         password = new javax.swing.JPasswordField();
         jLabel5 = new javax.swing.JLabel();
@@ -48,7 +50,7 @@ public class Login_1 extends javax.swing.JFrame {
         jLabel1.setText("Log in");
 
         jLabel2.setFont(new java.awt.Font("Segoe UI Light", 1, 14)); // NOI18N
-        jLabel2.setText("Username:");
+        jLabel2.setText("Correo:");
 
         jLabel3.setFont(new java.awt.Font("Segoe UI Light", 1, 14)); // NOI18N
         jLabel3.setText("Password:");
@@ -68,16 +70,6 @@ public class Login_1 extends javax.swing.JFrame {
         login.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loginActionPerformed(evt);
-            }
-        });
-
-        clean.setBackground(new java.awt.Color(0, 0, 0));
-        clean.setFont(new java.awt.Font("Segoe UI Light", 1, 18)); // NOI18N
-        clean.setForeground(new java.awt.Color(255, 255, 255));
-        clean.setText("Clean");
-        clean.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                cleanMouseClicked(evt);
             }
         });
 
@@ -121,9 +113,7 @@ public class Login_1 extends javax.swing.JFrame {
                         .addComponent(jLabel1)
                         .addGap(198, 198, 198))
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(clean)
-                            .addComponent(login))
+                        .addComponent(login)
                         .addGap(181, 181, 181))))
         );
         jPanel1Layout.setVerticalGroup(
@@ -143,8 +133,6 @@ public class Login_1 extends javax.swing.JFrame {
                 .addComponent(registarte)
                 .addGap(64, 64, 64)
                 .addComponent(login)
-                .addGap(28, 28, 28)
-                .addComponent(clean)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -174,20 +162,45 @@ public class Login_1 extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void loginMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_loginMouseClicked
-        // TODO add your handling code here:
-        if (username.getText().isEmpty() || password.getText().isEmpty()) {
-            JOptionPane.showMessageDialog(null, "username or password is wrong");
-        } else {
-            Lugares_inicio ventana;
-            ventana = new Lugares_inicio();
-            ventana.setVisible(true);
-            this.dispose();
+        String correo = username.getText().trim();
+        String contraseña = new String(password.getPassword());
+
+        // Validar campos vacíos
+        if (correo.isEmpty() || contraseña.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Por favor, complete todos los campos",
+                    "Campos vacíos", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            // Intentar iniciar sesión usando el back-end
+            Usuario usuarioLogueado = back_end.Classes.Usuario.iniciarSesion(correo, contraseña);
+
+            if (usuarioLogueado != null) {
+                // Login exitoso
+                JOptionPane.showMessageDialog(this, "¡Bienvenido " + usuarioLogueado.getNombre() + "!",
+                        "Login exitoso", JOptionPane.INFORMATION_MESSAGE);
+
+                // Abrir ventana principal y pasar el usuario
+                Lugares_inicio ventana = new Lugares_inicio(usuarioLogueado);
+                ventana.setVisible(true);
+                this.dispose();
+            } else {
+                // Credenciales incorrectas
+                JOptionPane.showMessageDialog(this, "Correo o contraseña incorrectos",
+                        "Error de autenticación", JOptionPane.ERROR_MESSAGE);
+                password.setText("");
+            }
+
+        } catch (back_end.Excepciones.PersistenciaException e) {
+            JOptionPane.showMessageDialog(this, "Error al conectar con la base de datos: " + e.getMessage(),
+                    "Error de Base de Datos", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error del sistema: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace(); // Para ver el error completo en la consola
         }
     }//GEN-LAST:event_loginMouseClicked
-
-    private void cleanMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_cleanMouseClicked
-        // TODO add your handling code here:
-    }//GEN-LAST:event_cleanMouseClicked
 
     private void loginActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loginActionPerformed
         // TODO add your handling code here:
@@ -199,9 +212,9 @@ public class Login_1 extends javax.swing.JFrame {
 
     private void registarteMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_registarteMouseClicked
         // TODO add your handling code here:
-                Registrarse ventana = new Registrarse();
-                ventana.setVisible(true);
-                this.dispose();
+        Registrarse ventana = new Registrarse();
+        ventana.setVisible(true);
+        this.dispose();
     }//GEN-LAST:event_registarteMouseClicked
 
     /**
@@ -247,7 +260,6 @@ public class Login_1 extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton clean;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;

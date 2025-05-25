@@ -4,7 +4,8 @@
  */
 package pagina;
 
-
+import back_end.Classes.Usuario;
+import back_end.Excepciones.PersistenciaException;
 import back_end.Classes.Usuario;
 import java.awt.Graphics;
 import java.awt.Image;
@@ -35,13 +36,22 @@ public class Registrarse extends javax.swing.JFrame {
         cuadro_informacion = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
-        usuario_contraseña = new javax.swing.JTextField();
+        nombre = new javax.swing.JTextField();
         jLabel3 = new javax.swing.JLabel();
         crear_cuenta = new javax.swing.JButton();
-        clean = new javax.swing.JButton();
         cree_contraseña = new javax.swing.JPasswordField();
         jLabel4 = new javax.swing.JLabel();
+        jLabel6 = new javax.swing.JLabel();
         confirmar_contraseña = new javax.swing.JPasswordField();
+        jLabel7 = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
+        jLabel9 = new javax.swing.JLabel();
+        correo_ = new javax.swing.JTextField();
+        uid = new javax.swing.JTextField();
+        apellido = new javax.swing.JTextField();
+        semestre = new javax.swing.JTextField();
+        jLabel10 = new javax.swing.JLabel();
+        carrera1 = new javax.swing.JTextField();
         jLabel5 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -52,7 +62,7 @@ public class Registrarse extends javax.swing.JFrame {
         jLabel1.setText("Crear cuenta");
 
         jLabel2.setFont(new java.awt.Font("Segoe UI Light", 1, 14)); // NOI18N
-        jLabel2.setText("Usuario / correo:");
+        jLabel2.setText("Correo:");
 
         jLabel3.setFont(new java.awt.Font("Segoe UI Light", 1, 14)); // NOI18N
         jLabel3.setText("Cree una contraseña:");
@@ -74,16 +84,6 @@ public class Registrarse extends javax.swing.JFrame {
             }
         });
 
-        clean.setBackground(new java.awt.Color(0, 0, 0));
-        clean.setFont(new java.awt.Font("Segoe UI", 0, 18)); // NOI18N
-        clean.setForeground(new java.awt.Color(255, 255, 255));
-        clean.setText("Clean");
-        clean.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                cleanMouseClicked(evt);
-            }
-        });
-
         cree_contraseña.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cree_contraseñaActionPerformed(evt);
@@ -93,64 +93,100 @@ public class Registrarse extends javax.swing.JFrame {
         jLabel4.setFont(new java.awt.Font("Segoe UI Light", 1, 14)); // NOI18N
         jLabel4.setText("Confirmar contraseña:");
 
+        jLabel6.setFont(new java.awt.Font("Segoe UI Light", 1, 14)); // NOI18N
+        jLabel6.setText("Escriba su nombre:");
+
         confirmar_contraseña.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 confirmar_contraseñaActionPerformed(evt);
             }
         });
 
+        jLabel7.setFont(new java.awt.Font("Segoe UI Light", 1, 14)); // NOI18N
+        jLabel7.setText("Carrera:");
+
+        jLabel8.setFont(new java.awt.Font("Segoe UI Light", 1, 14)); // NOI18N
+        jLabel8.setText("Escriba su apellido:");
+
+        jLabel9.setFont(new java.awt.Font("Segoe UI Light", 1, 14)); // NOI18N
+        jLabel9.setText("Semestre que cursa:");
+
+        jLabel10.setFont(new java.awt.Font("Segoe UI Light", 1, 14)); // NOI18N
+        jLabel10.setText("ID:");
+
         javax.swing.GroupLayout cuadro_informacionLayout = new javax.swing.GroupLayout(cuadro_informacion);
         cuadro_informacion.setLayout(cuadro_informacionLayout);
         cuadro_informacionLayout.setHorizontalGroup(
             cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(cuadro_informacionLayout.createSequentialGroup()
+                .addGap(26, 26, 26)
                 .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(cuadro_informacionLayout.createSequentialGroup()
-                        .addGap(26, 26, 26)
-                        .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel2)
-                            .addComponent(jLabel4)
-                            .addComponent(jLabel3))
-                        .addGap(47, 47, 47)
-                        .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(cree_contraseña, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(usuario_contraseña, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(confirmar_contraseña, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(cuadro_informacionLayout.createSequentialGroup()
-                        .addGap(290, 290, 290)
-                        .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(crear_cuenta)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, cuadro_informacionLayout.createSequentialGroup()
-                                .addComponent(clean)
-                                .addGap(23, 23, 23)))))
+                    .addComponent(jLabel2)
+                    .addComponent(jLabel4)
+                    .addComponent(jLabel3)
+                    .addComponent(jLabel6)
+                    .addComponent(jLabel7)
+                    .addComponent(jLabel8)
+                    .addComponent(jLabel9)
+                    .addComponent(jLabel10))
+                .addGap(47, 47, 47)
+                .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(uid, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cree_contraseña, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(nombre, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(confirmar_contraseña, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(correo_, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(apellido, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(semestre, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(carrera1, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(0, 37, Short.MAX_VALUE))
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, cuadro_informacionLayout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jLabel1)
-                .addGap(183, 183, 183))
+                .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel1, javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(crear_cuenta, javax.swing.GroupLayout.Alignment.TRAILING))
+                .addGap(179, 179, 179))
         );
         cuadro_informacionLayout.setVerticalGroup(
             cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(cuadro_informacionLayout.createSequentialGroup()
-                .addGap(92, 92, 92)
+                .addGap(46, 46, 46)
                 .addComponent(jLabel1)
                 .addGap(44, 44, 44)
                 .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
-                    .addComponent(usuario_contraseña, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(28, 28, 28)
-                .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cree_contraseña, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel3))
-                .addGap(27, 27, 27)
-                .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(confirmar_contraseña, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel4))
-                .addGap(114, 114, 114)
-                .addComponent(crear_cuenta)
+                    .addComponent(correo_, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(18, 18, 18)
-                .addComponent(clean)
-                .addContainerGap(232, Short.MAX_VALUE))
+                .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel3)
+                    .addComponent(cree_contraseña, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel4)
+                    .addComponent(confirmar_contraseña, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel6)
+                    .addComponent(nombre, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel8)
+                    .addComponent(apellido, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel9)
+                    .addComponent(semestre, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel7)
+                    .addComponent(carrera1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addGroup(cuadro_informacionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel10)
+                    .addComponent(uid, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(68, 68, 68)
+                .addComponent(crear_cuenta)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         jLabel5.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/apuestas-online.png"))); // NOI18N
@@ -160,7 +196,7 @@ public class Registrarse extends javax.swing.JFrame {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap(22, Short.MAX_VALUE)
                 .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 501, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(74, 74, 74)
                 .addComponent(cuadro_informacion, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -170,7 +206,7 @@ public class Registrarse extends javax.swing.JFrame {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addComponent(cuadro_informacion, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap(246, Short.MAX_VALUE)
                 .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 359, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(113, 113, 113))
         );
@@ -178,39 +214,74 @@ public class Registrarse extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void confirmar_contraseñaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_confirmar_contraseñaActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_confirmar_contraseñaActionPerformed
-
     private void cree_contraseñaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cree_contraseñaActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_cree_contraseñaActionPerformed
-
-    private void cleanMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_cleanMouseClicked
-        // TODO add your handling code here:
-    }//GEN-LAST:event_cleanMouseClicked
 
     private void crear_cuentaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_crear_cuentaActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_crear_cuentaActionPerformed
 
     private void crear_cuentaMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_crear_cuentaMouseClicked
-        // TODO add your handling code here:
-        if (confirmar_contraseña.getText().isEmpty() || cree_contraseña.getText().isEmpty() || usuario_contraseña.getText().isEmpty()) {
-            JOptionPane.showMessageDialog(null, "Hay alguna casilla vacía");
-        } else {
-            if (confirmar_contraseña.getText().equals(cree_contraseña.getText())) {
-                JOptionPane.showMessageDialog(null, "Cuenta creada");
+        // Obtener datos del formulario
+        String correo = correo_.getText().trim();
+        String contraseña = new String(cree_contraseña.getPassword());
+        String confirmarContraseña = new String(confirmar_contraseña.getPassword());
 
-                // Aquí abres la ventana del menú y cierras la actual
-                Lugares_inicio ventana = new Lugares_inicio();
-                ventana.setVisible(true);
+        // Por ahora usamos datos temporales (después los obtienes de campos adicionales)
+        String uid = "temp_uid"; // Obtener del campo UID
+        String nombre = "Nombre"; // Obtener del campo nombre
+        String apellido = "Apellido"; // Obtener del campo apellido
+        String carrera = "Ingeniería"; // Obtener del combobox
+        int semestre = 1; // Obtener del spinner
+
+        // Validaciones básicas
+        if (correo.isEmpty() || contraseña.isEmpty() || confirmarContraseña.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Por favor, complete todos los campos",
+                    "Campos vacíos", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        if (!contraseña.equals(confirmarContraseña)) {
+            JOptionPane.showMessageDialog(this, "Las contraseñas no coinciden",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            // Crear nuevo usuario usando el back-end
+            Usuario nuevoUsuario = new Usuario(uid, nombre, apellido, correo, contraseña, carrera, semestre);
+
+            // Intentar registrar el usuario
+            boolean registroExitoso = nuevoUsuario.registrarse(nombre, apellido, correo, contraseña, carrera, semestre);
+
+            if (registroExitoso) {
+                JOptionPane.showMessageDialog(this, "¡Cuenta creada exitosamente!",
+                        "Registro exitoso", JOptionPane.INFORMATION_MESSAGE);
+
+                // Redirigir al login
+                Login_1 ventanaLogin = new Login_1();
+                ventanaLogin.setVisible(true);
                 this.dispose();
             } else {
-                JOptionPane.showMessageDialog(null, "Las contraseñas no coinciden");
+                JOptionPane.showMessageDialog(this, "Error al crear la cuenta",
+                        "Error", JOptionPane.ERROR_MESSAGE);
             }
+
+        } catch (IllegalArgumentException e) {
+            // Errores de validación (formato de correo, contraseña débil, etc.)
+            JOptionPane.showMessageDialog(this, e.getMessage(),
+                    "Error de validación", JOptionPane.WARNING_MESSAGE);
+        } catch (Exception e) {
+            // Otros errores (base de datos, etc.)
+            JOptionPane.showMessageDialog(this, "Error del sistema: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_crear_cuentaMouseClicked
+
+    private void confirmar_contraseñaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_confirmar_contraseñaActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_confirmar_contraseñaActionPerformed
 
     /**
      * @param args the command line arguments
@@ -251,17 +322,26 @@ public class Registrarse extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton clean;
+    private javax.swing.JTextField apellido;
+    private javax.swing.JTextField carrera1;
     private javax.swing.JPasswordField confirmar_contraseña;
+    private javax.swing.JTextField correo_;
     private javax.swing.JButton crear_cuenta;
     private javax.swing.JPasswordField cree_contraseña;
     private javax.swing.JPanel cuadro_informacion;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
-    private javax.swing.JTextField usuario_contraseña;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JLabel jLabel9;
+    private javax.swing.JTextField nombre;
+    private javax.swing.JTextField semestre;
+    private javax.swing.JTextField uid;
     // End of variables declaration//GEN-END:variables
     class FondoPanel extends JPanel {
 

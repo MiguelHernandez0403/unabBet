@@ -4,6 +4,8 @@
  */
 package pagina;
 
+import back_end.Classes.Usuario;
+import back_end.Excepciones.PersistenciaException;
 import java.awt.Dimension;
 import java.awt.Image;
 import javax.swing.ImageIcon;
@@ -13,6 +15,14 @@ import javax.swing.ImageIcon;
  * @author Karol Saavedra
  */
 public class Lugares_inicio extends javax.swing.JFrame {
+    private Usuario usuarioActual; // Agregar este campo
+    
+    // Constructor que recibe el usuario
+    public Lugares_inicio(Usuario usuario) {
+        this.usuarioActual = usuario;
+        initComponents();
+         // Método para mostrar datos del usuario
+    }
 
     /**
      * Creates new form Lugares_inicio
@@ -32,6 +42,18 @@ public class Lugares_inicio extends javax.swing.JFrame {
         label.setIcon(iconoRedimensionado);
         label.setPreferredSize(new Dimension(40, 40));
         label.setSize(40, 40);
+    }
+    // Método para configurar datos del usuario en la interfaz
+    private void configurarInterfazUsuario() {
+        if (usuarioActual != null) {
+            // Aquí puedes personalizar la interfaz con los datos del usuario
+            // Por ejemplo:
+            this.setTitle("APUNAB - " + usuarioActual.getNombre() + " " + usuarioActual.getApellido());
+            
+            // Si tienes etiquetas en la interfaz, puedes actualizarlas:
+            // labelNombreUsuario.setText(usuarioActual.getNombre());
+            // labelSaldo.setText("Saldo: " + usuarioActual.getSaldoAPUNAB());
+        }
     }
     /**
      * This method is called from within the constructor to initialize the form.

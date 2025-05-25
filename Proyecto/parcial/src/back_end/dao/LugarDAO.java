@@ -1,213 +1,260 @@
 package back_end.dao;
 
 import back_end.Classes.Lugar;
-import back_end.Classes.Juego;
-import back_end.Classes.Usuario;
-import back_end.Classes.Calificacion;
 import back_end.Excepciones.PersistenciaException;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
-import java.io.*;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 public class LugarDAO {
 
-    private static final String ARCHIVO_LUGARES = "lugares.json";
-    private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    
     /**
-     * Inicializa el archivo JSON si no existe
+     * Verifica si ya existe un lugar con el mismo nombre y dirección
      */
-    private static void inicializarArchivo() throws PersistenciaException {
-        File archivo = new File(ARCHIVO_LUGARES);
-        if (!archivo.exists()) {
-            try {
-                // Crear el archivo con una lista vacía
-                List<Lugar> listaVacia = new ArrayList<>();
-                try (FileWriter writer = new FileWriter(archivo)) {
-                    gson.toJson(listaVacia, writer);
-                }
-            } catch (IOException e) {
-                throw new PersistenciaException("Error al crear el archivo JSON: " + e.getMessage());
+    public static boolean existeLugar(String nombre, String direccion) {
+        String sql = "SELECT COUNT(*) FROM lugares WHERE nombre = ? AND direccion = ?";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, nombre);
+            stmt.setString(2, direccion);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
             }
+
+        } catch (SQLException e) {
+            System.err.println("Error al verificar la existencia del lugar: " + e.getMessage());
         }
+
+        return false;
     }
-    
+
     /**
-     * Lee todos los lugares del archivo JSON
-     */
-    private static List<Lugar> leerLugares() throws PersistenciaException {
-        inicializarArchivo();
-        
-        try (FileReader reader = new FileReader(ARCHIVO_LUGARES)) {
-            Type tipoLista = new TypeToken<List<Lugar>>(){}.getType();
-            List<Lugar> lugares = gson.fromJson(reader, tipoLista);
-            return lugares != null ? lugares : new ArrayList<>();
-        } catch (IOException e) {
-            throw new PersistenciaException("Error al leer el archivo JSON: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * Escribe todos los lugares al archivo JSON
-     */
-    private static void escribirLugares(List<Lugar> lugares) throws PersistenciaException {
-        try (FileWriter writer = new FileWriter(ARCHIVO_LUGARES)) {
-            gson.toJson(lugares, writer);
-        } catch (IOException e) {
-            throw new PersistenciaException("Error al escribir el archivo JSON: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * Guarda un lugar en el archivo JSON
+     * Guarda un nuevo lugar en la base de datos
      */
     public static boolean guardarLugar(Lugar lugar) throws PersistenciaException {
-        if (lugar == null) {
-            return false;
+        String sql = "INSERT INTO lugares (id, nombre, direccion, descripcion, calificacion_promedio) "
+                + "VALUES (?, ?, ?, ?, ?)";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, lugar.getId());
+            stmt.setString(2, lugar.getNombre());
+            stmt.setString(3, lugar.getDireccion());
+            stmt.setString(4, lugar.getDescripcion());
+            stmt.setDouble(5, lugar.getCalificacionPromedio());
+
+            int filasAfectadas = stmt.executeUpdate();
+            return filasAfectadas > 0;
+
+        } catch (SQLException e) {
+            throw new PersistenciaException("Error al guardar el lugar en la base de datos: " + e.getMessage(), e);
         }
-        
-        List<Lugar> lugares = leerLugares();
-        
-        // Verificar si el lugar ya existe
-        boolean existe = lugares.stream()
-                .anyMatch(l -> l.getId().equals(lugar.getId()));
-        
-        if (!existe) {
-            lugares.add(lugar);
-            escribirLugares(lugares);
-            return true;
-        }
-        
-        return false;
     }
-    
-    /**
-     * Actualiza un lugar existente en el archivo JSON
-     */
-    public static boolean actualizarLugar(Lugar lugar) throws PersistenciaException {
-        if (lugar == null) {
-            return false;
-        }
-        
-        List<Lugar> lugares = leerLugares();
-        
-        for (int i = 0; i < lugares.size(); i++) {
-            if (lugares.get(i).getId().equals(lugar.getId())) {
-                lugares.set(i, lugar);
-                escribirLugares(lugares);
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    /**
-     * Elimina un lugar del archivo JSON por su ID
-     */
-    public static boolean eliminarLugar(String id) throws PersistenciaException {
-        if (id == null || id.trim().isEmpty()) {
-            return false;
-        }
-        
-        List<Lugar> lugares = leerLugares();
-        boolean eliminado = lugares.removeIf(lugar -> lugar.getId().equals(id));
-        
-        if (eliminado) {
-            escribirLugares(lugares);
-        }
-        
-        return eliminado;
-    }
-    
+
     /**
      * Busca un lugar por su ID
      */
     public static Lugar buscarPorId(String id) throws PersistenciaException {
-        if (id == null || id.trim().isEmpty()) {
-            return null;
+        String sql = "SELECT * FROM lugares WHERE id = ?";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, id);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return extraerLugarDeResultSet(rs);
+            }
+
+        } catch (SQLException e) {
+            throw new PersistenciaException("Error al buscar lugar por ID: " + e.getMessage(), e);
         }
-        
-        List<Lugar> lugares = leerLugares();
-        return lugares.stream()
-                .filter(lugar -> lugar.getId().equals(id))
-                .findFirst()
-                .orElse(null);
+
+        return null;
     }
-    
+
     /**
-     * Busca lugares por nombre (búsqueda parcial, case-insensitive)
+     * Busca lugares por nombre (búsqueda parcial)
      */
     public static List<Lugar> buscarPorNombre(String nombre) throws PersistenciaException {
-        if (nombre == null || nombre.trim().isEmpty()) {
-            return new ArrayList<>();
+        String sql = "SELECT * FROM lugares WHERE nombre LIKE ?";
+        List<Lugar> lugares = new ArrayList<>();
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, "%" + nombre + "%");
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                lugares.add(extraerLugarDeResultSet(rs));
+            }
+
+        } catch (SQLException e) {
+            throw new PersistenciaException("Error al buscar lugares por nombre: " + e.getMessage(), e);
         }
-        
-        List<Lugar> lugares = leerLugares();
-        return lugares.stream()
-                .filter(lugar -> lugar.getNombre().toLowerCase()
-                        .contains(nombre.toLowerCase()))
-                .collect(Collectors.toList());
+
+        return lugares;
     }
-    
+
     /**
-     * Obtiene todos los lugares del archivo JSON
+     * Busca lugares por dirección (búsqueda parcial)
+     */
+    public static List<Lugar> buscarPorDireccion(String direccion) throws PersistenciaException {
+        String sql = "SELECT * FROM lugares WHERE direccion LIKE ?";
+        List<Lugar> lugares = new ArrayList<>();
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, "%" + direccion + "%");
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                lugares.add(extraerLugarDeResultSet(rs));
+            }
+
+        } catch (SQLException e) {
+            throw new PersistenciaException("Error al buscar lugares por dirección: " + e.getMessage(), e);
+        }
+
+        return lugares;
+    }
+
+    /**
+     * Actualiza los datos de un lugar existente
+     */
+    public static boolean actualizarLugar(Lugar lugar) throws PersistenciaException {
+        String sql = "UPDATE lugares SET nombre = ?, direccion = ?, descripcion = ?, "
+                + "calificacion_promedio = ? WHERE id = ?";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, lugar.getNombre());
+            stmt.setString(2, lugar.getDireccion());
+            stmt.setString(3, lugar.getDescripcion());
+            stmt.setDouble(4, lugar.getCalificacionPromedio());
+            stmt.setString(5, lugar.getId());
+
+            int filasAfectadas = stmt.executeUpdate();
+            return filasAfectadas > 0;
+
+        } catch (SQLException e) {
+            throw new PersistenciaException("Error al actualizar el lugar: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Actualiza solo la calificación promedio de un lugar
+     */
+    public static boolean actualizarCalificacionPromedio(String id, double nuevaCalificacion) throws PersistenciaException {
+        String sql = "UPDATE lugares SET calificacion_promedio = ? WHERE id = ?";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setDouble(1, nuevaCalificacion);
+            stmt.setString(2, id);
+
+            int filasAfectadas = stmt.executeUpdate();
+            return filasAfectadas > 0;
+
+        } catch (SQLException e) {
+            throw new PersistenciaException("Error al actualizar la calificación promedio: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Elimina un lugar de la base de datos Nota: Las claves foráneas se
+     * encargarán de eliminar registros relacionados
+     */
+    public static boolean eliminarLugar(String id) throws PersistenciaException {
+        String sql = "DELETE FROM lugares WHERE id = ?";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, id);
+
+            int filasAfectadas = stmt.executeUpdate();
+            return filasAfectadas > 0;
+
+        } catch (SQLException e) {
+            throw new PersistenciaException("Error al eliminar el lugar: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Obtiene todos los lugares de la base de datos
      */
     public static List<Lugar> obtenerTodosLosLugares() throws PersistenciaException {
-        return new ArrayList<>(leerLugares());
+        String sql = "SELECT * FROM lugares ORDER BY nombre";
+        List<Lugar> lugares = new ArrayList<>();
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                lugares.add(extraerLugarDeResultSet(rs));
+            }
+
+        } catch (SQLException e) {
+            throw new PersistenciaException("Error al obtener todos los lugares: " + e.getMessage(), e);
+        }
+
+        return lugares;
     }
-    
+
     /**
      * Obtiene lugares ordenados por calificación (de mayor a menor)
      */
     public static List<Lugar> obtenerLugaresPorCalificacion() throws PersistenciaException {
-        List<Lugar> lugares = leerLugares();
-        return lugares.stream()
-                .sorted((l1, l2) -> Double.compare(l2.getCalificacionPromedio(), 
-                                                 l1.getCalificacionPromedio()))
-                .collect(Collectors.toList());
-    }
-    
-    /**
-     * Verifica si existe un lugar con el mismo nombre y dirección
-     */
-    public static boolean existeLugar(String nombre, String direccion) {
-        if (nombre == null || direccion == null) {
-            return false;
+        String sql = "SELECT * FROM lugares ORDER BY calificacion_promedio DESC";
+        List<Lugar> lugares = new ArrayList<>();
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                lugares.add(extraerLugarDeResultSet(rs));
+            }
+
+        } catch (SQLException e) {
+            throw new PersistenciaException("Error al obtener lugares por calificación: " + e.getMessage(), e);
         }
-        
-        try {
-            List<Lugar> lugares = leerLugares();
-            return lugares.stream()
-                    .anyMatch(lugar -> lugar.getNombre().equalsIgnoreCase(nombre.trim()) && 
-                                     lugar.getDireccion().equalsIgnoreCase(direccion.trim()));
-        } catch (PersistenciaException e) {
-            System.err.println("Error al verificar existencia del lugar: " + e.getMessage());
-            return false;
-        }
+
+        return lugares;
     }
-    
+
     /**
-     * Obtiene la cantidad total de lugares
+     * Obtiene el número total de lugares registrados
      */
     public static int contarLugares() throws PersistenciaException {
-        return leerLugares().size();
+        String sql = "SELECT COUNT(*) FROM lugares";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
+
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+
+        } catch (SQLException e) {
+            throw new PersistenciaException("Error al contar lugares: " + e.getMessage(), e);
+        }
+
+        return 0;
     }
-    
+
     /**
-     * Busca lugares por rango de calificación
+     * Extrae un objeto Lugar desde un ResultSet
      */
-    public static List<Lugar> buscarPorRangoCalificacion(double minimo, double maximo) 
-            throws PersistenciaException {
-        List<Lugar> lugares = leerLugares();
-        return lugares.stream()
-                .filter(lugar -> lugar.getCalificacionPromedio() >= minimo && 
-                               lugar.getCalificacionPromedio() <= maximo)
-                .collect(Collectors.toList());
+    private static Lugar extraerLugarDeResultSet(ResultSet rs) throws SQLException {
+        return new Lugar(
+                rs.getString("id"),
+                rs.getString("nombre"),
+                rs.getString("direccion"),
+                rs.getString("descripcion"),
+                rs.getDouble("calificacion_promedio")
+        );
     }
 }

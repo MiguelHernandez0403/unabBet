@@ -107,11 +107,11 @@ public class Usuario {
         this.carrera = carrera.trim();
         this.semestre = semestre;
 
-        // Guardar el usuario en el archivo JSON
+        // Guardar el usuario en la base de datos
         try {
             return UsuarioDAO.guardarUsuario(this);
         } catch (Exception e) {
-            throw new PersistenciaException("Error al guardar el usuario en el archivo: " + e.getMessage());
+            throw new PersistenciaException("Error al guardar el usuario en la base de datos: " + e.getMessage());
         }
     }
 
@@ -142,6 +142,7 @@ public class Usuario {
 
     private String cifrarContraseña(String contraseña) {
         // En una implementación real, usaríamos una librería de cifrado segura
+
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
             byte[] hash = md.digest(contraseña.getBytes(java.nio.charset.StandardCharsets.UTF_8));
@@ -172,6 +173,7 @@ public class Usuario {
 
         // Verificar si las contraseñas coinciden
         if (usuario.getContraseña().equals(contraseñaCifrada)) {
+
             return usuario;
         }
 
@@ -210,7 +212,7 @@ public class Usuario {
             this.semestre = semestre;
         }
 
-        // Actualizar en el archivo JSON
+        // Actualizar en la base de datos
         return UsuarioDAO.actualizarUsuario(this);
     }
 
@@ -234,7 +236,7 @@ public class Usuario {
         // Actualizar en memoria
         this.contraseña = nuevaContraseñaCifrada;
 
-        // Actualizar en el archivo JSON
+        // Actualizar en la base de datos
         return UsuarioDAO.actualizarContraseña(this.id, nuevaContraseñaCifrada);
     }
 
@@ -252,14 +254,8 @@ public class Usuario {
         if (lugar != null && !lugaresRegistrados.contains(lugar)) {
             lugaresRegistrados.add(lugar);
             lugar.registrarUsuario(this);
-            // Aquí se podría llamar un método que guarde en el archivo JSON
-            try {
-                UsuarioDAO.actualizarUsuario(this);
-            } catch (PersistenciaException e) {
-                System.err.println("Error al actualizar usuario en archivo: " + e.getMessage());
-                return false;
-            }
             return true;
+            //Aqui se podri llamar un metodo que guarde en la BD
         }
         return false;
     }
@@ -268,14 +264,8 @@ public class Usuario {
         if (lugar != null && lugaresRegistrados.contains(lugar)) {
             lugaresRegistrados.remove(lugar);
             lugar.quitarUsuario(this);
-            // Aquí se podría llamar un método que guarde los cambios en el archivo JSON
-            try {
-                UsuarioDAO.actualizarUsuario(this);
-            } catch (PersistenciaException e) {
-                System.err.println("Error al actualizar usuario en archivo: " + e.getMessage());
-                return false;
-            }
             return true;
+            //Aqui se podri llamar un metodo que guarde los cambios en la BD
         }
         return false;
     }
@@ -283,12 +273,7 @@ public class Usuario {
     public void agregarApuesta(Apuesta apuesta) {
         if (apuesta != null) {
             this.historialApuestas.add(apuesta);
-            // Aquí se podría llamar un método que guarde en el archivo JSON
-            try {
-                UsuarioDAO.actualizarUsuario(this);
-            } catch (PersistenciaException e) {
-                System.err.println("Error al actualizar usuario en archivo: " + e.getMessage());
-            }
+            //Aqui se podri llamar un metodo que guarde en la BD
         }
     }
 
@@ -299,7 +284,7 @@ public class Usuario {
             // Actualizar en memoria
             this.saldoAPUNAB = nuevoSaldo;
 
-            // Actualizar en el archivo JSON
+            // Actualizar en la base de datos
             return UsuarioDAO.actualizarUsuario(this);
         }
 
@@ -311,7 +296,7 @@ public class Usuario {
     }
 
     public boolean eliminar() throws PersistenciaException {
-        // Eliminar el usuario del archivo JSON
+        // Eliminar el usuario de la base de datos
         return UsuarioDAO.eliminarUsuario(this.id);
     }
 
