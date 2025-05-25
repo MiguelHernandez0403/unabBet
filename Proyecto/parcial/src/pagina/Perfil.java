@@ -4,15 +4,21 @@
  */
 package pagina;
 
+import back_end.Classes.SessionManager;
+import back_end.Classes.Usuario;
+import back_end.Excepciones.PersistenciaException;
 import java.awt.Dimension;
 import java.awt.Image;
 import javax.swing.ImageIcon;
+import javax.swing.JOptionPane;
 
 /**
  *
  * @author Karol Saavedra
  */
 public class Perfil extends javax.swing.JFrame {
+
+    private Usuario usuarioActual;
 
     /**
      * Creates new form Perfil
@@ -23,8 +29,78 @@ public class Perfil extends javax.swing.JFrame {
         redimensionarImagen("/icons/notificacion.png", notificaciones);
         redimensionarImagen("/icons/calendar_1.png", calendario);
         redimensionarImagen("/icons/trad.png", traduccion);
+
+        cargarInformacionUsuario();
     }
-        private void redimensionarImagen(String rutaImagen, javax.swing.JLabel label) {
+
+    public Perfil(Usuario usuario) {
+        this();
+        this.usuarioActual = usuario;
+        mostrarInformacionUsuario();
+    }
+
+    private void cargarInformacionUsuario() {
+        try {
+            // Intentar obtener el usuario de la sesión actual
+            usuarioActual = SessionManager.getInstance().getUsuarioActual();
+            
+            if (usuarioActual == null) {
+                // Si no hay usuario en sesión, intentar obtener el primero de la lista
+                var usuarios = Usuario.obtenerTodos();
+                if (!usuarios.isEmpty()) {
+                    usuarioActual = usuarios.get(0); // Usar el primer usuario como ejemplo
+                    SessionManager.getInstance().setUsuarioActual(usuarioActual);
+                }
+            }
+            
+            if (usuarioActual != null) {
+                mostrarInformacionUsuario();
+            } else {
+                mostrarInformacionPorDefecto();
+            }
+        } catch (PersistenciaException e) {
+            JOptionPane.showMessageDialog(this, 
+                "Error al cargar la información del usuario: " + e.getMessage(),
+                "Error", 
+                JOptionPane.ERROR_MESSAGE);
+            mostrarInformacionPorDefecto();
+        }
+    }
+    
+    private void mostrarInformacionUsuario() {
+        if (usuarioActual != null) {
+            // Mostrar nombre completo
+            jLabel3.setText(usuarioActual.getNombre() + " " + usuarioActual.getApellido());
+            
+            // Mostrar correo
+            jLabel7.setText(usuarioActual.getCorreo());
+            
+            // Mostrar ID universitario
+            jLabel9.setText(usuarioActual.getuid());
+            
+            // Mostrar carrera
+            jLabel11.setText(usuarioActual.getCarrera());
+            
+            // Mostrar semestre
+            jLabel12.setText("Semestre " + usuarioActual.getSemestre());
+            
+            // Mostrar saldo APUNAB
+            jLabel13.setText(String.format("%.2f APUNAB", usuarioActual.getSaldoAPUNAB()));
+        }
+    }
+    
+    private void mostrarInformacionPorDefecto() {
+        jLabel3.setText("Usuario no encontrado");
+        jLabel7.setText("No disponible");
+        jLabel9.setText("No disponible");
+        jLabel11.setText("No disponible");
+        jLabel12.setText("No disponible");
+        jLabel13.setText("0.00 APUNAB");
+    }
+    
+    
+    
+    private void redimensionarImagen(String rutaImagen, javax.swing.JLabel label) {
         ImageIcon iconoOriginal = new ImageIcon(getClass().getResource(rutaImagen));
         Image imagenEscalada = iconoOriginal.getImage().getScaledInstance(50, 50, Image.SCALE_SMOOTH);
         ImageIcon iconoRedimensionado = new ImageIcon(imagenEscalada);
