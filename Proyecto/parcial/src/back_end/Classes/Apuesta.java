@@ -24,6 +24,11 @@ public class Apuesta {
     private double gananciaPotencial;
     private double gananciaReal;
 
+    // Constructor por defecto para Gson
+    public Apuesta() {
+        this.otrosApostadores = new ArrayList<>();
+    }
+
     public Apuesta(Usuario estudiante, Lugar lugar, Juego juego, double cantidadAPUNAB) {
         this.id = UUID.randomUUID().toString();
         this.estudiante = estudiante;
@@ -85,7 +90,7 @@ public class Apuesta {
 
         estudiante.agregarApuesta(this);
 
-        // Integración con la base de datos
+        // Integración con persistencia JSON
         try {
             boolean guardado = ApuestaDAO.guardarApuesta(this);
             if (!guardado) {
@@ -95,7 +100,7 @@ public class Apuesta {
             }
             return true;
         } catch (PersistenciaException e) {
-            System.err.println("Error al crear apuesta en BD: " + e.getMessage());
+            System.err.println("Error al crear apuesta en archivo JSON: " + e.getMessage());
             // Revertir cambios si hay error
             estudiante.actualizarSaldo(cantidadAPUNAB);
             return false;
@@ -134,12 +139,12 @@ public class Apuesta {
             actualizado = true;
         }
 
-        // Integración con la base de datos
+        // Integración con persistencia JSON
         if (actualizado) {
             try {
-                boolean actualizadoBD = ApuestaDAO.actualizarApuesta(this);
-                if (!actualizadoBD) {
-                    // Si no se pudo actualizar en BD, revertir cambios
+                boolean actualizadoJSON = ApuestaDAO.actualizarApuesta(this);
+                if (!actualizadoJSON) {
+                    // Si no se pudo actualizar en JSON, revertir cambios
                     if (cantidadAPUNAB != cantidadAnterior) {
                         double diferencia = cantidadAnterior - this.cantidadAPUNAB;
                         estudiante.actualizarSaldo(diferencia);
@@ -150,7 +155,7 @@ public class Apuesta {
                 }
                 return true;
             } catch (PersistenciaException e) {
-                System.err.println("Error al actualizar apuesta en BD: " + e.getMessage());
+                System.err.println("Error al actualizar apuesta en archivo JSON: " + e.getMessage());
                 // Revertir cambios si hay error
                 if (cantidadAPUNAB != cantidadAnterior) {
                     double diferencia = cantidadAnterior - this.cantidadAPUNAB;
@@ -172,17 +177,17 @@ public class Apuesta {
 
         estudiante.actualizarSaldo(cantidadAPUNAB); // Puede lanzar PersistenciaException
 
-        // Integración con la base de datos
+        // Integración con persistencia JSON
         try {
             boolean eliminado = ApuestaDAO.eliminarApuesta(this.id);
             if (!eliminado) {
-                // Si no se pudo eliminar de BD, revertir cambios
+                // Si no se pudo eliminar del JSON, revertir cambios
                 estudiante.actualizarSaldo(-cantidadAPUNAB);
                 return false;
             }
             return true;
         } catch (PersistenciaException e) {
-            System.err.println("Error al eliminar apuesta de BD: " + e.getMessage());
+            System.err.println("Error al eliminar apuesta del archivo JSON: " + e.getMessage());
             // Revertir cambios si hay error
             estudiante.actualizarSaldo(-cantidadAPUNAB);
             return false;
@@ -190,14 +195,14 @@ public class Apuesta {
     }
 
     public Apuesta consultarApuesta() {
-        // Consultar la apuesta más actualizada desde la base de datos
+        // Consultar la apuesta más actualizada desde el archivo JSON
         try {
             Apuesta apuestaActualizada = ApuestaDAO.buscarPorId(this.id);
             if (apuestaActualizada != null) {
                 return apuestaActualizada;
             }
         } catch (PersistenciaException e) {
-            System.err.println("Error al consultar apuesta desde BD: " + e.getMessage());
+            System.err.println("Error al consultar apuesta desde archivo JSON: " + e.getMessage());
         }
         // Si hay error o no se encuentra, retornar la instancia actual
         return this;
@@ -225,11 +230,11 @@ public class Apuesta {
             this.gananciaReal = 0;
         }
 
-        // Integración con la base de datos
+        // Integración con persistencia JSON
         try {
-            boolean finalizada = ApuestaDAO.finalizarApuesta(this.id, ganada, this.gananciaReal);
+            boolean finalizada = ApuestaDAO.actualizarApuesta(this);
             if (!finalizada) {
-                // Si no se pudo finalizar en BD, revertir cambios
+                // Si no se pudo finalizar en JSON, revertir cambios
                 this.ganada = false;
                 this.finalizada = false;
                 if (ganada) {
@@ -240,7 +245,7 @@ public class Apuesta {
             }
             return true;
         } catch (PersistenciaException e) {
-            System.err.println("Error al finalizar apuesta en BD: " + e.getMessage());
+            System.err.println("Error al finalizar apuesta en archivo JSON: " + e.getMessage());
             // Revertir cambios si hay error
             this.ganada = false;
             this.finalizada = false;
@@ -256,11 +261,11 @@ public class Apuesta {
         if (apostador != null && !otrosApostadores.contains(apostador) && apostador != this.estudiante) {
             otrosApostadores.add(apostador);
 
-            // Actualizar en base de datos
+            // Actualizar en archivo JSON
             try {
                 return ApuestaDAO.actualizarApuesta(this);
             } catch (PersistenciaException e) {
-                System.err.println("Error al agregar apostador en BD: " + e.getMessage());
+                System.err.println("Error al agregar apostador en archivo JSON: " + e.getMessage());
                 // Revertir cambio si hay error
                 otrosApostadores.remove(apostador);
                 return false;
@@ -273,11 +278,11 @@ public class Apuesta {
         if (apostador != null && otrosApostadores.contains(apostador)) {
             otrosApostadores.remove(apostador);
 
-            // Actualizar en base de datos
+            // Actualizar en archivo JSON
             try {
                 return ApuestaDAO.actualizarApuesta(this);
             } catch (PersistenciaException e) {
-                System.err.println("Error al eliminar apostador en BD: " + e.getMessage());
+                System.err.println("Error al eliminar apostador en archivo JSON: " + e.getMessage());
                 // Revertir cambio si hay error
                 otrosApostadores.add(apostador);
                 return false;
@@ -286,6 +291,7 @@ public class Apuesta {
         return false;
     }
 
+    // Métodos estáticos para operaciones de persistencia
     public static Apuesta buscarApuestaPorId(String id) throws PersistenciaException {
         return ApuestaDAO.buscarPorId(id);
     }
@@ -310,48 +316,99 @@ public class Apuesta {
         return ApuestaDAO.existeApuesta(id);
     }
 
+    // Métodos de inicialización
+    public static boolean inicializarPersistencia() throws PersistenciaException {
+        return ApuestaDAO.inicializarArchivoApuestas();
+    }
+
+    // Getters y Setters
     public String getId() {
         return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public Usuario getEstudiante() {
         return estudiante;
     }
 
+    public void setEstudiante(Usuario estudiante) {
+        this.estudiante = estudiante;
+    }
+
     public Lugar getLugar() {
         return lugar;
+    }
+
+    public void setLugar(Lugar lugar) {
+        this.lugar = lugar;
     }
 
     public Juego getJuego() {
         return juego;
     }
 
+    public void setJuego(Juego juego) {
+        this.juego = juego;
+    }
+
     public double getCantidadAPUNAB() {
         return cantidadAPUNAB;
+    }
+
+    public void setCantidadAPUNAB(double cantidadAPUNAB) {
+        this.cantidadAPUNAB = cantidadAPUNAB;
+        this.gananciaPotencial = calcularGananciaPotencial();
     }
 
     public LocalDateTime getFecha() {
         return fecha;
     }
 
+    public void setFecha(LocalDateTime fecha) {
+        this.fecha = fecha;
+    }
+
     public List<Usuario> getOtrosApostadores() {
         return new ArrayList<>(otrosApostadores);
+    }
+
+    public void setOtrosApostadores(List<Usuario> otrosApostadores) {
+        this.otrosApostadores = otrosApostadores != null ? new ArrayList<>(otrosApostadores) : new ArrayList<>();
     }
 
     public boolean isGanada() {
         return ganada;
     }
 
+    public void setGanada(boolean ganada) {
+        this.ganada = ganada;
+    }
+
     public boolean isFinalizada() {
         return finalizada;
+    }
+
+    public void setFinalizada(boolean finalizada) {
+        this.finalizada = finalizada;
     }
 
     public double getGananciaPotencial() {
         return gananciaPotencial;
     }
 
+    public void setGananciaPotencial(double gananciaPotencial) {
+        this.gananciaPotencial = gananciaPotencial;
+    }
+
     public double getGananciaReal() {
         return gananciaReal;
+    }
+
+    public void setGananciaReal(double gananciaReal) {
+        this.gananciaReal = gananciaReal;
     }
 
     public String getEstadoTexto() {
@@ -364,6 +421,7 @@ public class Apuesta {
         }
     }
 
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -375,10 +433,12 @@ public class Apuesta {
         return id.equals(apuesta.id);
     }
 
+    @Override
     public int hashCode() {
         return Objects.hash(id);
     }
 
+    @Override
     public String toString() {
         return "Apuesta{"
                 + "id='" + id + '\''
