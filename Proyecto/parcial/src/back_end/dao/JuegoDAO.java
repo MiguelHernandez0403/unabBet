@@ -2,388 +2,360 @@ package back_end.dao;
 
 import back_end.Classes.Juego;
 import back_end.Excepciones.PersistenciaException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializationContext;
+import com.google.gson.JsonSerializer;
+import com.google.gson.reflect.TypeToken;
+import java.io.*;
+import java.lang.reflect.Type;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class JuegoDAO {
     
-    /**
-     * Verifica si ya existe un juego con el mismo nombre
-     */
-    public static boolean existeJuego(String nombre) {
-        String sql = "SELECT COUNT(*) FROM juegos WHERE nombre = ?";
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, nombre);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return rs.getInt(1) > 0;
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error al verificar la existencia del juego: " + e.getMessage());
+    private static final String ARCHIVO_JUEGOS = "juegos.json";
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    
+    // Serializador personalizado para LocalDateTime
+    private static class LocalDateTimeAdapter implements JsonSerializer<LocalDateTime>, JsonDeserializer<LocalDateTime> {
+        @Override
+        public JsonElement serialize(LocalDateTime src, Type typeOfSrc, JsonSerializationContext context) {
+            return new JsonPrimitive(src.format(FORMATTER));
         }
 
-        return false;
+        @Override
+        public LocalDateTime deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+                throws JsonParseException {
+            return LocalDateTime.parse(json.getAsString(), FORMATTER);
+        }
     }
-
+    
+    private static final Gson gson = new GsonBuilder()
+            .setPrettyPrinting()
+            .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+            .create();
+    
     /**
-     * Guarda un nuevo juego en la base de datos
+     * Inicializa el archivo JSON si no existe
+     */
+    private static void inicializarArchivo() throws PersistenciaException {
+        File archivo = new File(ARCHIVO_JUEGOS);
+        if (!archivo.exists()) {
+            try {
+                // Crear el archivo con una lista vacía
+                List<Juego> listaVacia = new ArrayList<>();
+                try (FileWriter writer = new FileWriter(archivo)) {
+                    gson.toJson(listaVacia, writer);
+                }
+            } catch (IOException e) {
+                throw new PersistenciaException("Error al crear el archivo JSON de juegos: " + e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Lee todos los juegos del archivo JSON
+     */
+    private static List<Juego> leerJuegos() throws PersistenciaException {
+        inicializarArchivo();
+        
+        try (FileReader reader = new FileReader(ARCHIVO_JUEGOS)) {
+            Type tipoLista = new TypeToken<List<Juego>>(){}.getType();
+            List<Juego> juegos = gson.fromJson(reader, tipoLista);
+            return juegos != null ? juegos : new ArrayList<>();
+        } catch (IOException e) {
+            throw new PersistenciaException("Error al leer el archivo JSON de juegos: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Escribe todos los juegos al archivo JSON
+     */
+    private static void escribirJuegos(List<Juego> juegos) throws PersistenciaException {
+        try (FileWriter writer = new FileWriter(ARCHIVO_JUEGOS)) {
+            gson.toJson(juegos, writer);
+        } catch (IOException e) {
+            throw new PersistenciaException("Error al escribir el archivo JSON de juegos: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Guarda un juego en el archivo JSON
      */
     public static boolean guardarJuego(Juego juego) throws PersistenciaException {
-        String sql = "INSERT INTO juegos (id, nombre, descripcion, factor_multiplicador, activo, fecha_creacion) "
-                + "VALUES (?, ?, ?, ?, ?, ?)";
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, juego.getId());
-            stmt.setString(2, juego.getNombre());
-            stmt.setString(3, juego.getDescripcion());
-            stmt.setDouble(4, juego.getFactorMultiplicador());
-            stmt.setBoolean(5, juego.isActivo());
-            stmt.setTimestamp(6, Timestamp.valueOf(juego.getFechaCreacion()));
-
-            int filasAfectadas = stmt.executeUpdate();
-            return filasAfectadas > 0;
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al guardar el juego en la base de datos: " + e.getMessage(), e);
+        if (juego == null) {
+            return false;
         }
+        
+        List<Juego> juegos = leerJuegos();
+        
+        // Verificar si el juego ya existe por ID
+        boolean existe = juegos.stream()
+                .anyMatch(j -> j.getId().equals(juego.getId()));
+        
+        if (!existe) {
+            juegos.add(juego);
+            escribirJuegos(juegos);
+            return true;
+        }
+        
+        return false;
     }
-
+    
+    /**
+     * Actualiza un juego existente en el archivo JSON
+     */
+    public static boolean actualizarJuego(Juego juego) throws PersistenciaException {
+        if (juego == null) {
+            return false;
+        }
+        
+        List<Juego> juegos = leerJuegos();
+        
+        for (int i = 0; i < juegos.size(); i++) {
+            if (juegos.get(i).getId().equals(juego.getId())) {
+                juegos.set(i, juego);
+                escribirJuegos(juegos);
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Elimina un juego del archivo JSON por su ID (eliminación física)
+     */
+    public static boolean eliminarJuegoFisico(String id) throws PersistenciaException {
+        if (id == null || id.trim().isEmpty()) {
+            return false;
+        }
+        
+        List<Juego> juegos = leerJuegos();
+        boolean eliminado = juegos.removeIf(juego -> juego.getId().equals(id));
+        
+        if (eliminado) {
+            escribirJuegos(juegos);
+        }
+        
+        return eliminado;
+    }
+    
     /**
      * Busca un juego por su ID
      */
     public static Juego buscarPorId(String id) throws PersistenciaException {
-        String sql = "SELECT * FROM juegos WHERE id = ?";
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, id);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return extraerJuegoDeResultSet(rs);
-            }
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al buscar juego por ID: " + e.getMessage(), e);
+        if (id == null || id.trim().isEmpty()) {
+            return null;
         }
-
-        return null;
+        
+        List<Juego> juegos = leerJuegos();
+        return juegos.stream()
+                .filter(juego -> juego.getId().equals(id))
+                .findFirst()
+                .orElse(null);
     }
-
+    
     /**
-     * Busca juegos por nombre (búsqueda parcial)
+     * Busca juegos por nombre (búsqueda parcial, case-insensitive)
      */
     public static List<Juego> buscarPorNombre(String nombre) throws PersistenciaException {
-        String sql = "SELECT * FROM juegos WHERE nombre LIKE ? ORDER BY nombre";
-        List<Juego> juegos = new ArrayList<>();
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, "%" + nombre + "%");
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                juegos.add(extraerJuegoDeResultSet(rs));
-            }
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al buscar juegos por nombre: " + e.getMessage(), e);
+        if (nombre == null || nombre.trim().isEmpty()) {
+            return new ArrayList<>();
         }
-
-        return juegos;
+        
+        List<Juego> juegos = leerJuegos();
+        return juegos.stream()
+                .filter(juego -> juego.getNombre().toLowerCase()
+                        .contains(nombre.toLowerCase()))
+                .collect(Collectors.toList());
     }
-
+    
     /**
-     * Actualiza los datos de un juego existente
-     */
-    public static boolean actualizarJuego(Juego juego) throws PersistenciaException {
-        String sql = "UPDATE juegos SET nombre = ?, descripcion = ?, factor_multiplicador = ?, "
-                + "activo = ? WHERE id = ?";
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, juego.getNombre());
-            stmt.setString(2, juego.getDescripcion());
-            stmt.setDouble(3, juego.getFactorMultiplicador());
-            stmt.setBoolean(4, juego.isActivo());
-            stmt.setString(5, juego.getId());
-
-            int filasAfectadas = stmt.executeUpdate();
-            return filasAfectadas > 0;
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al actualizar el juego: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Elimina un juego de la base de datos (eliminación física)
-     * Nota: Las claves foráneas se encargarán de manejar registros relacionados
-     */
-    public static boolean eliminarJuego(String id) throws PersistenciaException {
-        String sql = "DELETE FROM juegos WHERE id = ?";
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, id);
-
-            int filasAfectadas = stmt.executeUpdate();
-            return filasAfectadas > 0;
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al eliminar el juego: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Obtiene todos los juegos de la base de datos
+     * Obtiene todos los juegos del archivo JSON
      */
     public static List<Juego> obtenerTodosLosJuegos() throws PersistenciaException {
-        String sql = "SELECT * FROM juegos ORDER BY nombre";
-        List<Juego> juegos = new ArrayList<>();
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql); 
-             ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                juegos.add(extraerJuegoDeResultSet(rs));
-            }
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al obtener todos los juegos: " + e.getMessage(), e);
-        }
-
-        return juegos;
+        return new ArrayList<>(leerJuegos());
     }
-
+    
     /**
      * Obtiene solo los juegos activos
      */
     public static List<Juego> obtenerJuegosActivos() throws PersistenciaException {
-        String sql = "SELECT * FROM juegos WHERE activo = TRUE ORDER BY nombre";
-        List<Juego> juegos = new ArrayList<>();
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql); 
-             ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                juegos.add(extraerJuegoDeResultSet(rs));
-            }
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al obtener juegos activos: " + e.getMessage(), e);
-        }
-
-        return juegos;
+        List<Juego> juegos = leerJuegos();
+        return juegos.stream()
+                .filter(Juego::isActivo)
+                .collect(Collectors.toList());
     }
-
+    
     /**
      * Obtiene juegos ordenados por factor multiplicador (de mayor a menor)
      */
     public static List<Juego> obtenerJuegosPorFactor() throws PersistenciaException {
-        String sql = "SELECT * FROM juegos ORDER BY factor_multiplicador DESC";
-        List<Juego> juegos = new ArrayList<>();
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql); 
-             ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                juegos.add(extraerJuegoDeResultSet(rs));
-            }
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al obtener juegos por factor: " + e.getMessage(), e);
-        }
-
-        return juegos;
+        List<Juego> juegos = leerJuegos();
+        return juegos.stream()
+                .sorted(Comparator.comparingDouble(Juego::getFactorMultiplicador).reversed())
+                .collect(Collectors.toList());
     }
-
+    
     /**
-     * Busca juegos por rango de factor multiplicador
+     * Verifica si existe un juego con el nombre especificado
      */
-    public static List<Juego> buscarPorRangoFactor(double factorMin, double factorMax) throws PersistenciaException {
-        String sql = "SELECT * FROM juegos WHERE factor_multiplicador BETWEEN ? AND ? ORDER BY factor_multiplicador";
-        List<Juego> juegos = new ArrayList<>();
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setDouble(1, factorMin);
-            stmt.setDouble(2, factorMax);
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                juegos.add(extraerJuegoDeResultSet(rs));
-            }
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al buscar juegos por rango de factor: " + e.getMessage(), e);
+    public static boolean existeJuego(String nombre) {
+        if (nombre == null || nombre.trim().isEmpty()) {
+            return false;
         }
-
-        return juegos;
-    }
-
-    /**
-     * Actualiza solo el estado activo/inactivo de un juego
-     */
-    public static boolean actualizarEstadoJuego(String id, boolean activo) throws PersistenciaException {
-        String sql = "UPDATE juegos SET activo = ? WHERE id = ?";
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setBoolean(1, activo);
-            stmt.setString(2, id);
-
-            int filasAfectadas = stmt.executeUpdate();
-            return filasAfectadas > 0;
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al actualizar el estado del juego: " + e.getMessage(), e);
+        
+        try {
+            List<Juego> juegos = leerJuegos();
+            return juegos.stream()
+                    .anyMatch(juego -> juego.getNombre().equalsIgnoreCase(nombre.trim()));
+        } catch (PersistenciaException e) {
+            System.err.println("Error al verificar existencia del juego: " + e.getMessage());
+            return false;
         }
     }
-
+    
     /**
-     * Actualiza solo el factor multiplicador de un juego
-     */
-    public static boolean actualizarFactorMultiplicador(String id, double nuevoFactor) throws PersistenciaException {
-        String sql = "UPDATE juegos SET factor_multiplicador = ? WHERE id = ?";
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setDouble(1, nuevoFactor);
-            stmt.setString(2, id);
-
-            int filasAfectadas = stmt.executeUpdate();
-            return filasAfectadas > 0;
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al actualizar el factor multiplicador: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Obtiene el número total de juegos registrados
+     * Cuenta el total de juegos
      */
     public static int contarJuegos() throws PersistenciaException {
-        String sql = "SELECT COUNT(*) FROM juegos";
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql); 
-             ResultSet rs = stmt.executeQuery()) {
-
-            if (rs.next()) {
-                return rs.getInt(1);
-            }
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al contar juegos: " + e.getMessage(), e);
-        }
-
-        return 0;
+        return leerJuegos().size();
     }
-
+    
     /**
-     * Obtiene el número total de juegos activos
+     * Cuenta solo los juegos activos
      */
     public static int contarJuegosActivos() throws PersistenciaException {
-        String sql = "SELECT COUNT(*) FROM juegos WHERE activo = TRUE";
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql); 
-             ResultSet rs = stmt.executeQuery()) {
-
-            if (rs.next()) {
-                return rs.getInt(1);
-            }
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al contar juegos activos: " + e.getMessage(), e);
-        }
-
-        return 0;
+        List<Juego> juegos = leerJuegos();
+        return (int) juegos.stream()
+                .filter(Juego::isActivo)
+                .count();
     }
-
+    
     /**
-     * Obtiene juegos creados en un período específico
+     * Obtiene juegos por rango de factor multiplicador
      */
-    public static List<Juego> obtenerJuegosPorPeriodo(LocalDateTime fechaInicio, LocalDateTime fechaFin) throws PersistenciaException {
-        String sql = "SELECT * FROM juegos WHERE fecha_creacion BETWEEN ? AND ? ORDER BY fecha_creacion DESC";
-        List<Juego> juegos = new ArrayList<>();
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setTimestamp(1, Timestamp.valueOf(fechaInicio));
-            stmt.setTimestamp(2, Timestamp.valueOf(fechaFin));
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                juegos.add(extraerJuegoDeResultSet(rs));
-            }
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al obtener juegos por período: " + e.getMessage(), e);
-        }
-
-        return juegos;
+    public static List<Juego> buscarPorRangoFactor(double minimo, double maximo) 
+            throws PersistenciaException {
+        List<Juego> juegos = leerJuegos();
+        return juegos.stream()
+                .filter(juego -> juego.getFactorMultiplicador() >= minimo && 
+                               juego.getFactorMultiplicador() <= maximo)
+                .collect(Collectors.toList());
     }
-
+    
     /**
-     * Obtiene el juego con el factor multiplicador más alto
+     * Obtiene juegos creados en un rango de fechas
      */
-    public static Juego obtenerJuegoConMayorFactor() throws PersistenciaException {
-        String sql = "SELECT * FROM juegos WHERE activo = TRUE ORDER BY factor_multiplicador DESC LIMIT 1";
-
-        try (Connection conn = ConexionDB.obtenerConexion(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return extraerJuegoDeResultSet(rs);
-            }
-
-        } catch (SQLException e) {
-            throw new PersistenciaException("Error al obtener juego con mayor factor: " + e.getMessage(), e);
-        }
-
-        return null;
+    public static List<Juego> buscarPorRangoFechas(LocalDateTime fechaInicio, LocalDateTime fechaFin) 
+            throws PersistenciaException {
+        List<Juego> juegos = leerJuegos();
+        return juegos.stream()
+                .filter(juego -> {
+                    LocalDateTime fechaCreacion = juego.getFechaCreacion();
+                    return fechaCreacion.isAfter(fechaInicio) && fechaCreacion.isBefore(fechaFin);
+                })
+                .collect(Collectors.toList());
     }
-
+    
     /**
-     * Extrae un objeto Juego desde un ResultSet
+     * Obtiene los juegos más recientes (ordenados por fecha de creación descendente)
      */
-    private static Juego extraerJuegoDeResultSet(ResultSet rs) throws SQLException {
-        return new Juego(
-                rs.getString("id"),
-                rs.getString("nombre"),
-                rs.getString("descripcion"),
-                rs.getDouble("factor_multiplicador"),
-                rs.getBoolean("activo"),
-                rs.getTimestamp("fecha_creacion").toLocalDateTime()
-        );
+    public static List<Juego> obtenerJuegosRecientes(int limite) throws PersistenciaException {
+        List<Juego> juegos = leerJuegos();
+        return juegos.stream()
+                .sorted(Comparator.comparing(Juego::getFechaCreacion).reversed())
+                .limit(limite)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Obtiene estadísticas básicas de los juegos
+     */
+    public static JuegoEstadisticas obtenerEstadisticas() throws PersistenciaException {
+        List<Juego> juegos = leerJuegos();
+        
+        if (juegos.isEmpty()) {
+            return new JuegoEstadisticas(0, 0, 0, 0.0, 0.0, 0.0);
+        }
+        
+        int totalJuegos = juegos.size();
+        int juegosActivos = (int) juegos.stream().filter(Juego::isActivo).count();
+        int juegosInactivos = totalJuegos - juegosActivos;
+        
+        double factorPromedio = juegos.stream()
+                .mapToDouble(Juego::getFactorMultiplicador)
+                .average()
+                .orElse(0.0);
+        
+        double factorMinimo = juegos.stream()
+                .mapToDouble(Juego::getFactorMultiplicador)
+                .min()
+                .orElse(0.0);
+        
+        double factorMaximo = juegos.stream()
+                .mapToDouble(Juego::getFactorMultiplicador)
+                .max()
+                .orElse(0.0);
+        
+        return new JuegoEstadisticas(totalJuegos, juegosActivos, juegosInactivos, 
+                                   factorPromedio, factorMinimo, factorMaximo);
+    }
+    
+    /**
+     * Clase para encapsular estadísticas de juegos
+     */
+    public static class JuegoEstadisticas {
+        private final int totalJuegos;
+        private final int juegosActivos;
+        private final int juegosInactivos;
+        private final double factorPromedio;
+        private final double factorMinimo;
+        private final double factorMaximo;
+        
+        public JuegoEstadisticas(int totalJuegos, int juegosActivos, int juegosInactivos,
+                               double factorPromedio, double factorMinimo, double factorMaximo) {
+            this.totalJuegos = totalJuegos;
+            this.juegosActivos = juegosActivos;
+            this.juegosInactivos = juegosInactivos;
+            this.factorPromedio = factorPromedio;
+            this.factorMinimo = factorMinimo;
+            this.factorMaximo = factorMaximo;
+        }
+        
+        // Getters
+        public int getTotalJuegos() { return totalJuegos; }
+        public int getJuegosActivos() { return juegosActivos; }
+        public int getJuegosInactivos() { return juegosInactivos; }
+        public double getFactorPromedio() { return factorPromedio; }
+        public double getFactorMinimo() { return factorMinimo; }
+        public double getFactorMaximo() { return factorMaximo; }
+        
+        @Override
+        public String toString() {
+            return String.format(
+                "Estadísticas de Juegos:\n" +
+                "- Total: %d\n" +
+                "- Activos: %d\n" +
+                "- Inactivos: %d\n" +
+                "- Factor promedio: %.2f\n" +
+                "- Factor mínimo: %.2f\n" +
+                "- Factor máximo: %.2f",
+                totalJuegos, juegosActivos, juegosInactivos,
+                factorPromedio, factorMinimo, factorMaximo
+            );
+        }
     }
     
 }
