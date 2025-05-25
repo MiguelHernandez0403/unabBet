@@ -5,65 +5,116 @@ import back_end.Classes.Usuario;
 import back_end.Classes.Lugar;
 import back_end.Classes.Juego;
 import back_end.Excepciones.PersistenciaException;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
-import com.google.gson.JsonSyntaxException;
-import java.io.*;
-import java.lang.reflect.Type;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.stream.Collectors;
 
 public class ApuestaDAO {
 
-    private static final String ARCHIVO_APUESTAS = "apuestas.json";
-    private static final Gson gson = new GsonBuilder()
-            .setPrettyPrinting()
-            .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-            .create();
+    // Primero necesitamos crear la tabla de apuestas si no existe
+    public static boolean inicializarTablaApuestas() {
+        String sqlCrearTablaApuestas
+                = "CREATE TABLE IF NOT EXISTS apuestas ("
+                + "  id VARCHAR(50) PRIMARY KEY,"
+                + "  estudiante_id VARCHAR(50) NOT NULL,"
+                + "  lugar_id VARCHAR(50) NOT NULL,"
+                + "  juego_id VARCHAR(50) NOT NULL,"
+                + "  cantidad_apunab DOUBLE NOT NULL,"
+                + "  fecha TIMESTAMP NOT NULL,"
+                + "  ganada BOOLEAN DEFAULT FALSE,"
+                + "  finalizada BOOLEAN DEFAULT FALSE,"
+                + "  ganancia_potencial DOUBLE NOT NULL,"
+                + "  ganancia_real DOUBLE DEFAULT 0,"
+                + "  fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                + "  FOREIGN KEY (estudiante_id) REFERENCES usuarios(id) ON DELETE CASCADE"
+                + ")";
 
-    /**
-     * Inicializa el archivo JSON si no existe
-     */
-    public static boolean inicializarArchivoApuestas() throws PersistenciaException {
-        File archivo = new File(ARCHIVO_APUESTAS);
-        
-        if (!archivo.exists()) {
-            try {
-                archivo.createNewFile();
-                List<Apuesta> apuestasVacias = new ArrayList<>();
-                guardarApuestasEnArchivo(apuestasVacias);
-                System.out.println("Archivo " + ARCHIVO_APUESTAS + " creado exitosamente.");
-                return true;
-            } catch (IOException e) {
-                System.err.println("Error al crear el archivo " + ARCHIVO_APUESTAS + ": " + e.getMessage());
-                return false;
-            }
+        String sqlCrearTablaApostadores
+                = "CREATE TABLE IF NOT EXISTS apuesta_apostadores ("
+                + "  apuesta_id VARCHAR(50) NOT NULL,"
+                + "  usuario_id VARCHAR(50) NOT NULL,"
+                + "  PRIMARY KEY (apuesta_id, usuario_id),"
+                + "  FOREIGN KEY (apuesta_id) REFERENCES apuestas(id) ON DELETE CASCADE,"
+                + "  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE"
+                + ")";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); java.sql.Statement stmt = conn.createStatement()) {
+
+            stmt.execute(sqlCrearTablaApuestas);
+            stmt.execute(sqlCrearTablaApostadores);
+
+            return true;
+        } catch (SQLException e) {
+            System.err.println("Error al inicializar tablas de apuestas: " + e.getMessage());
+            return false;
         }
-        return true;
     }
 
     /**
-     * CREATE - Guarda una nueva apuesta en el archivo JSON
+     * CREATE - Guarda una nueva apuesta en la base de datos
      */
     public static boolean guardarApuesta(Apuesta apuesta) throws PersistenciaException {
+        String sqlApuesta = "INSERT INTO apuestas (id, estudiante_id, lugar_id, juego_id, cantidad_apunab, "
+                + "fecha, ganada, finalizada, ganancia_potencial, ganancia_real) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        Connection conn = null;
         try {
-            List<Apuesta> apuestas = cargarApuestasDesdeArchivo();
-            
-            // Verificar que no exista ya una apuesta con el mismo ID
-            boolean existe = apuestas.stream().anyMatch(a -> a.getId().equals(apuesta.getId()));
-            if (existe) {
-                throw new PersistenciaException("Ya existe una apuesta con el ID: " + apuesta.getId());
+            conn = ConexionDB.obtenerConexion();
+            conn.setAutoCommit(false); // Iniciar transacción
+
+            // Insertar la apuesta principal
+            try (PreparedStatement stmtApuesta = conn.prepareStatement(sqlApuesta)) {
+                stmtApuesta.setString(1, apuesta.getId());
+                stmtApuesta.setString(2, apuesta.getEstudiante().getId());
+                stmtApuesta.setString(3, apuesta.getLugar().getId());
+                stmtApuesta.setString(4, apuesta.getJuego().getId());
+                stmtApuesta.setDouble(5, apuesta.getCantidadAPUNAB());
+                stmtApuesta.setTimestamp(6, Timestamp.valueOf(apuesta.getFecha()));
+                stmtApuesta.setBoolean(7, apuesta.isGanada());
+                stmtApuesta.setBoolean(8, apuesta.isFinalizada());
+                stmtApuesta.setDouble(9, apuesta.getGananciaPotencial());
+                stmtApuesta.setDouble(10, apuesta.getGananciaReal());
+
+                int filasAfectadas = stmtApuesta.executeUpdate();
+
+                if (filasAfectadas > 0) {
+                    // Guardar otros apostadores si existen
+                    if (!apuesta.getOtrosApostadores().isEmpty()) {
+                        guardarOtrosApostadores(conn, apuesta.getId(), apuesta.getOtrosApostadores());
+                    }
+
+                    conn.commit(); // Confirmar transacción
+                    return true;
+                } else {
+                    conn.rollback();
+                    return false;
+                }
             }
-            
-            apuestas.add(apuesta);
-            guardarApuestasEnArchivo(apuestas);
-            return true;
-            
-        } catch (Exception e) {
-            throw new PersistenciaException("Error al guardar la apuesta: " + e.getMessage(), e);
+
+        } catch (SQLException e) {
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    System.err.println("Error al hacer rollback: " + ex.getMessage());
+                }
+            }
+            throw new PersistenciaException("Error al guardar la apuesta en la base de datos: " + e.getMessage(), e);
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    System.err.println("Error al cerrar la conexión: " + e.getMessage());
+                }
+            }
         }
     }
 
@@ -71,84 +122,143 @@ public class ApuestaDAO {
      * READ - Busca una apuesta por su ID
      */
     public static Apuesta buscarPorId(String id) throws PersistenciaException {
-        try {
-            List<Apuesta> apuestas = cargarApuestasDesdeArchivo();
-            return apuestas.stream()
-                    .filter(a -> a.getId().equals(id))
-                    .findFirst()
-                    .orElse(null);
-                    
-        } catch (Exception e) {
+        String sql = "SELECT * FROM apuestas WHERE id = ?";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, id);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return extraerApuestaDeResultSet(rs);
+            }
+
+        } catch (SQLException e) {
             throw new PersistenciaException("Error al buscar apuesta por ID: " + e.getMessage(), e);
         }
+
+        return null;
     }
 
     /**
      * READ - Obtiene todas las apuestas de un usuario específico
      */
     public static List<Apuesta> buscarPorUsuario(String usuarioId) throws PersistenciaException {
-        try {
-            List<Apuesta> apuestas = cargarApuestasDesdeArchivo();
-            return apuestas.stream()
-                    .filter(a -> a.getEstudiante() != null && a.getEstudiante().getId().equals(usuarioId))
-                    .sorted((a1, a2) -> a2.getFecha().compareTo(a1.getFecha()))
-                    .collect(Collectors.toList());
-                    
-        } catch (Exception e) {
+        String sql = "SELECT * FROM apuestas WHERE estudiante_id = ? ORDER BY fecha DESC";
+        List<Apuesta> apuestas = new ArrayList<>();
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, usuarioId);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                apuestas.add(extraerApuestaDeResultSet(rs));
+            }
+
+        } catch (SQLException e) {
             throw new PersistenciaException("Error al buscar apuestas por usuario: " + e.getMessage(), e);
         }
+
+        return apuestas;
     }
 
     /**
      * READ - Obtiene todas las apuestas
      */
     public static List<Apuesta> obtenerTodasLasApuestas() throws PersistenciaException {
-        try {
-            List<Apuesta> apuestas = cargarApuestasDesdeArchivo();
-            return apuestas.stream()
-                    .sorted((a1, a2) -> a2.getFecha().compareTo(a1.getFecha()))
-                    .collect(Collectors.toList());
-                    
-        } catch (Exception e) {
+        String sql = "SELECT * FROM apuestas ORDER BY fecha DESC";
+        List<Apuesta> apuestas = new ArrayList<>();
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                apuestas.add(extraerApuestaDeResultSet(rs));
+            }
+
+        } catch (SQLException e) {
             throw new PersistenciaException("Error al obtener todas las apuestas: " + e.getMessage(), e);
         }
+
+        return apuestas;
     }
 
     /**
      * READ - Obtiene apuestas activas (no finalizadas)
      */
     public static List<Apuesta> obtenerApuestasActivas() throws PersistenciaException {
-        try {
-            List<Apuesta> apuestas = cargarApuestasDesdeArchivo();
-            return apuestas.stream()
-                    .filter(a -> !a.isFinalizada())
-                    .sorted((a1, a2) -> a2.getFecha().compareTo(a1.getFecha()))
-                    .collect(Collectors.toList());
-                    
-        } catch (Exception e) {
+        String sql = "SELECT * FROM apuestas WHERE finalizada = FALSE ORDER BY fecha DESC";
+        List<Apuesta> apuestas = new ArrayList<>();
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                apuestas.add(extraerApuestaDeResultSet(rs));
+            }
+
+        } catch (SQLException e) {
             throw new PersistenciaException("Error al obtener apuestas activas: " + e.getMessage(), e);
         }
+
+        return apuestas;
     }
 
     /**
      * UPDATE - Actualiza una apuesta existente
      */
-    public static boolean actualizarApuesta(Apuesta apuestaActualizada) throws PersistenciaException {
+    public static boolean actualizarApuesta(Apuesta apuesta) throws PersistenciaException {
+        String sqlApuesta = "UPDATE apuestas SET cantidad_apunab = ?, ganada = ?, finalizada = ?, "
+                + "ganancia_potencial = ?, ganancia_real = ? WHERE id = ?";
+
+        Connection conn = null;
         try {
-            List<Apuesta> apuestas = cargarApuestasDesdeArchivo();
-            
-            for (int i = 0; i < apuestas.size(); i++) {
-                if (apuestas.get(i).getId().equals(apuestaActualizada.getId())) {
-                    apuestas.set(i, apuestaActualizada);
-                    guardarApuestasEnArchivo(apuestas);
+            conn = ConexionDB.obtenerConexion();
+            conn.setAutoCommit(false);
+
+            // Actualizar la apuesta principal
+            try (PreparedStatement stmtApuesta = conn.prepareStatement(sqlApuesta)) {
+                stmtApuesta.setDouble(1, apuesta.getCantidadAPUNAB());
+                stmtApuesta.setBoolean(2, apuesta.isGanada());
+                stmtApuesta.setBoolean(3, apuesta.isFinalizada());
+                stmtApuesta.setDouble(4, apuesta.getGananciaPotencial());
+                stmtApuesta.setDouble(5, apuesta.getGananciaReal());
+                stmtApuesta.setString(6, apuesta.getId());
+
+                int filasAfectadas = stmtApuesta.executeUpdate();
+
+                if (filasAfectadas > 0) {
+                    // Actualizar otros apostadores
+                    eliminarOtrosApostadores(conn, apuesta.getId());
+                    if (!apuesta.getOtrosApostadores().isEmpty()) {
+                        guardarOtrosApostadores(conn, apuesta.getId(), apuesta.getOtrosApostadores());
+                    }
+
+                    conn.commit();
                     return true;
+                } else {
+                    conn.rollback();
+                    return false;
                 }
             }
-            
-            return false; // No se encontró la apuesta
-            
-        } catch (Exception e) {
+
+        } catch (SQLException e) {
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    System.err.println("Error al hacer rollback: " + ex.getMessage());
+                }
+            }
             throw new PersistenciaException("Error al actualizar la apuesta: " + e.getMessage(), e);
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    System.err.println("Error al cerrar la conexión: " + e.getMessage());
+                }
+            }
         }
     }
 
@@ -156,42 +266,36 @@ public class ApuestaDAO {
      * UPDATE - Finaliza una apuesta (marca como ganada o perdida)
      */
     public static boolean finalizarApuesta(String apuestaId, boolean ganada, double gananciaReal) throws PersistenciaException {
-        try {
-            List<Apuesta> apuestas = cargarApuestasDesdeArchivo();
-            
-            for (Apuesta apuesta : apuestas) {
-                if (apuesta.getId().equals(apuestaId)) {
-                    // Como no podemos modificar directamente los campos privados,
-                    // necesitamos crear una nueva instancia o usar métodos setter
-                    // Por ahora, buscamos y actualizamos toda la apuesta
-                    apuesta.finalizarApuesta(ganada);
-                    guardarApuestasEnArchivo(apuestas);
-                    return true;
-                }
-            }
-            
-            return false;
-            
-        } catch (Exception e) {
+        String sql = "UPDATE apuestas SET ganada = ?, finalizada = TRUE, ganancia_real = ? WHERE id = ?";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setBoolean(1, ganada);
+            stmt.setDouble(2, gananciaReal);
+            stmt.setString(3, apuestaId);
+
+            int filasAfectadas = stmt.executeUpdate();
+            return filasAfectadas > 0;
+
+        } catch (SQLException e) {
             throw new PersistenciaException("Error al finalizar la apuesta: " + e.getMessage(), e);
         }
     }
 
     /**
-     * DELETE - Elimina una apuesta del archivo JSON
+     * DELETE - Elimina una apuesta de la base de datos
      */
     public static boolean eliminarApuesta(String id) throws PersistenciaException {
-        try {
-            List<Apuesta> apuestas = cargarApuestasDesdeArchivo();
-            boolean eliminada = apuestas.removeIf(a -> a.getId().equals(id));
-            
-            if (eliminada) {
-                guardarApuestasEnArchivo(apuestas);
-            }
-            
-            return eliminada;
-            
-        } catch (Exception e) {
+        String sql = "DELETE FROM apuestas WHERE id = ?";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, id);
+
+            int filasAfectadas = stmt.executeUpdate();
+            return filasAfectadas > 0;
+
+        } catch (SQLException e) {
             throw new PersistenciaException("Error al eliminar la apuesta: " + e.getMessage(), e);
         }
     }
@@ -200,20 +304,110 @@ public class ApuestaDAO {
      * DELETE - Elimina todas las apuestas de un usuario
      */
     public static boolean eliminarApuestasPorUsuario(String usuarioId) throws PersistenciaException {
-        try {
-            List<Apuesta> apuestas = cargarApuestasDesdeArchivo();
-            boolean eliminadas = apuestas.removeIf(a -> 
-                a.getEstudiante() != null && a.getEstudiante().getId().equals(usuarioId)
-            );
-            
-            if (eliminadas) {
-                guardarApuestasEnArchivo(apuestas);
-            }
-            
-            return eliminadas;
-            
-        } catch (Exception e) {
+        String sql = "DELETE FROM apuestas WHERE estudiante_id = ?";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, usuarioId);
+
+            int filasAfectadas = stmt.executeUpdate();
+            return filasAfectadas > 0;
+
+        } catch (SQLException e) {
             throw new PersistenciaException("Error al eliminar apuestas del usuario: " + e.getMessage(), e);
+        }
+    }
+
+    // Métodos auxiliares para manejar otros apostadores
+    private static void guardarOtrosApostadores(Connection conn, String apuestaId, List<Usuario> apostadores) throws SQLException {
+        String sql = "INSERT INTO apuesta_apostadores (apuesta_id, usuario_id) VALUES (?, ?)";
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            for (Usuario apostador : apostadores) {
+                stmt.setString(1, apuestaId);
+                stmt.setString(2, apostador.getId());
+                stmt.addBatch();
+            }
+            stmt.executeBatch();
+        }
+    }
+
+    private static void eliminarOtrosApostadores(Connection conn, String apuestaId) throws SQLException {
+        String sql = "DELETE FROM apuesta_apostadores WHERE apuesta_id = ?";
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, apuestaId);
+            stmt.executeUpdate();
+        }
+    }
+
+    private static List<Usuario> obtenerOtrosApostadores(String apuestaId) throws SQLException {
+        String sql = "SELECT u.* FROM usuarios u "
+                + "INNER JOIN apuesta_apostadores aa ON u.id = aa.usuario_id "
+                + "WHERE aa.apuesta_id = ?";
+
+        List<Usuario> apostadores = new ArrayList<>();
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, apuestaId);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                Usuario usuario = new Usuario(
+                        rs.getString("id"),
+                        rs.getString("uid"),
+                        rs.getString("nombre"),
+                        rs.getString("apellido"),
+                        rs.getString("correo"),
+                        rs.getString("contraseña"),
+                        rs.getString("carrera"),
+                        rs.getInt("semestre"),
+                        rs.getDouble("saldo_apunab")
+                );
+                apostadores.add(usuario);
+            }
+        }
+
+        return apostadores;
+    }
+
+    // Método auxiliar para extraer una apuesta del ResultSet
+    private static Apuesta extraerApuestaDeResultSet(ResultSet rs) throws SQLException {
+        try {
+            String apuestaId = rs.getString("id");
+            String estudianteId = rs.getString("estudiante_id");
+            String lugarId = rs.getString("lugar_id");
+            String juegoId = rs.getString("juego_id");
+
+            // Obtener el estudiante, lugar y juego (esto requeriría implementar sus respectivos DAOs)
+            Usuario estudiante = UsuarioDAO.buscarPorId(estudianteId);
+            // Para lugar y juego necesitarías implementar LugarDAO y JuegoDAO
+            // Por ahora crearemos objetos básicos o null
+            Lugar lugar = null; // LugarDAO.buscarPorId(lugarId); 
+            Juego juego = null; // JuegoDAO.buscarPorId(juegoId);
+
+            // Obtener otros apostadores
+            List<Usuario> otrosApostadores = obtenerOtrosApostadores(apuestaId);
+
+            LocalDateTime fecha = rs.getTimestamp("fecha").toLocalDateTime();
+
+            return new Apuesta(
+                    apuestaId,
+                    estudiante,
+                    lugar,
+                    juego,
+                    rs.getDouble("cantidad_apunab"),
+                    fecha,
+                    otrosApostadores,
+                    rs.getBoolean("ganada"),
+                    rs.getBoolean("finalizada"),
+                    rs.getDouble("ganancia_potencial"),
+                    rs.getDouble("ganancia_real")
+            );
+
+        } catch (PersistenciaException e) {
+            throw new SQLException("Error al extraer datos de usuario: " + e.getMessage(), e);
         }
     }
 
@@ -221,62 +415,22 @@ public class ApuestaDAO {
      * Método utilitario para verificar si existe una apuesta
      */
     public static boolean existeApuesta(String id) {
-        try {
-            List<Apuesta> apuestas = cargarApuestasDesdeArchivo();
-            return apuestas.stream().anyMatch(a -> a.getId().equals(id));
-        } catch (Exception e) {
+        String sql = "SELECT COUNT(*) FROM apuestas WHERE id = ?";
+
+        try (Connection conn = ConexionDB.obtenerConexion(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, id);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+
+        } catch (SQLException e) {
             System.err.println("Error al verificar existencia de apuesta: " + e.getMessage());
-            return false;
-        }
-    }
-
-    // Métodos privados para manejo del archivo JSON
-    
-    /**
-     * Carga todas las apuestas desde el archivo JSON
-     */
-    private static List<Apuesta> cargarApuestasDesdeArchivo() throws PersistenciaException {
-        inicializarArchivoApuestas();
-        
-        try (FileReader reader = new FileReader(ARCHIVO_APUESTAS)) {
-            Type listType = new TypeToken<List<Apuesta>>(){}.getType();
-            List<Apuesta> apuestas = gson.fromJson(reader, listType);
-            return apuestas != null ? apuestas : new ArrayList<>();
-            
-        } catch (JsonSyntaxException e) {
-            // Si el archivo está corrupto o vacío, crear una lista vacía
-            System.err.println("Archivo JSON corrupto, creando nueva lista: " + e.getMessage());
-            return new ArrayList<>();
-        } catch (IOException e) {
-            throw new PersistenciaException("Error al leer el archivo de apuestas: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Guarda todas las apuestas en el archivo JSON
-     */
-    private static void guardarApuestasEnArchivo(List<Apuesta> apuestas) throws PersistenciaException {
-        try (FileWriter writer = new FileWriter(ARCHIVO_APUESTAS)) {
-            gson.toJson(apuestas, writer);
-            writer.flush();
-            
-        } catch (IOException e) {
-            throw new PersistenciaException("Error al escribir el archivo de apuestas: " + e.getMessage(), e);
-        }
-    }
-
-    // Clase auxiliar para serialización de LocalDateTime
-    private static class LocalDateTimeAdapter implements com.google.gson.JsonSerializer<LocalDateTime>, com.google.gson.JsonDeserializer<LocalDateTime> {
-        
-        @Override
-        public com.google.gson.JsonElement serialize(LocalDateTime dateTime, Type type, com.google.gson.JsonSerializationContext context) {
-            return new com.google.gson.JsonPrimitive(dateTime.toString());
         }
 
-        @Override
-        public LocalDateTime deserialize(com.google.gson.JsonElement json, Type type, com.google.gson.JsonDeserializationContext context) throws com.google.gson.JsonParseException {
-            return LocalDateTime.parse(json.getAsString());
-        }
+        return false;
     }
 
 }//TODO: documentar en el readme

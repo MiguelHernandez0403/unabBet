@@ -20,7 +20,6 @@ public class Lugar {
     private List<Usuario> usuariosRegistrados;
     private List<Calificacion> calificaciones;
 
-    // Constructor para crear un nuevo lugar
     public Lugar(String nombre, String direccion, String descripcion) {
         this.id = UUID.randomUUID().toString();
         this.nombre = nombre;
@@ -32,7 +31,6 @@ public class Lugar {
         this.calificaciones = new ArrayList<>();
     }
 
-    // Constructor para cargar lugar existente desde JSON
     public Lugar(String id, String nombre, String direccion, String descripcion, double calificacionPromedio) {
         this.id = id;
         this.nombre = nombre;
@@ -44,16 +42,6 @@ public class Lugar {
         this.calificaciones = new ArrayList<>();
     }
 
-    // Constructor sin parámetros para GSON
-    public Lugar() {
-        this.juegosDisponibles = new ArrayList<>();
-        this.usuariosRegistrados = new ArrayList<>();
-        this.calificaciones = new ArrayList<>();
-    }
-
-    /**
-     * Crea un nuevo lugar y lo guarda en el archivo JSON
-     */
     public boolean crearLugar(String nombre, String direccion, String descripcion) {
 
         if (nombre == null || nombre.trim().isEmpty()
@@ -72,7 +60,7 @@ public class Lugar {
         this.descripcion = descripcion != null ? descripcion : "";
 
         try {
-            // Guardar el lugar en el archivo JSON
+            // Guardar el lugar en la base de datos
             return LugarDAO.guardarLugar(this);
         } catch (PersistenciaException e) {
             System.err.println("Error al crear el lugar: " + e.getMessage());
@@ -80,9 +68,6 @@ public class Lugar {
         }
     }
 
-    /**
-     * Actualiza los datos del lugar en el archivo JSON
-     */
     public boolean actualizarLugar(String nombre, String direccion, String descripcion) {
         boolean actualizado = false;
 
@@ -103,7 +88,7 @@ public class Lugar {
 
         if (actualizado) {
             try {
-                // Actualizar los datos en el archivo JSON
+                // Actualizar los datos en la base de datos
                 return LugarDAO.actualizarLugar(this);
             } catch (PersistenciaException e) {
                 System.err.println("Error al actualizar el lugar: " + e.getMessage());
@@ -114,9 +99,6 @@ public class Lugar {
         return false;
     }
 
-    /**
-     * Elimina el lugar del archivo JSON
-     */
     public boolean eliminarLugar() {
 
         // Limpiar las listas en memoria
@@ -129,7 +111,7 @@ public class Lugar {
         calificaciones.clear();
 
         try {
-            // Eliminar el lugar del archivo JSON
+            // Eliminar el lugar de la base de datos
             return LugarDAO.eliminarLugar(this.id);
         } catch (PersistenciaException e) {
             System.err.println("Error al eliminar el lugar: " + e.getMessage());
@@ -137,14 +119,11 @@ public class Lugar {
         }
     }
 
-    /**
-     * Consulta y actualiza los datos del lugar desde el archivo JSON
-     */
     public Lugar consultarLugar() {
         try {
             Lugar lugarActualizado = LugarDAO.buscarPorId(this.id);
             if (lugarActualizado != null) {
-                // Actualizar los datos del objeto actual con los del archivo JSON
+                // Actualizar los datos del objeto actual con los de la BD
                 this.nombre = lugarActualizado.getNombre();
                 this.direccion = lugarActualizado.getDireccion();
                 this.descripcion = lugarActualizado.getDescripcion();
@@ -157,9 +136,6 @@ public class Lugar {
         }
     }
 
-    /**
-     * Busca un lugar por ID en el archivo JSON
-     */
     public static Lugar buscarPorId(String id) {
         try {
             return LugarDAO.buscarPorId(id);
@@ -169,9 +145,6 @@ public class Lugar {
         }
     }
 
-    /**
-     * Busca lugares por nombre en el archivo JSON
-     */
     public static List<Lugar> buscarPorNombre(String nombre) {
         try {
             return LugarDAO.buscarPorNombre(nombre);
@@ -181,9 +154,6 @@ public class Lugar {
         }
     }
 
-    /**
-     * Obtiene todos los lugares del archivo JSON
-     */
     public static List<Lugar> obtenerTodosLosLugares() {
         try {
             return LugarDAO.obtenerTodosLosLugares();
@@ -193,9 +163,6 @@ public class Lugar {
         }
     }
 
-    /**
-     * Obtiene lugares ordenados por calificación del archivo JSON
-     */
     public static List<Lugar> obtenerLugaresPorCalificacion() {
         try {
             return LugarDAO.obtenerLugaresPorCalificacion();
@@ -205,23 +172,9 @@ public class Lugar {
         }
     }
 
-    /**
-     * Guarda los cambios actuales en el archivo JSON
-     */
-    public boolean guardarCambios() {
-        try {
-            return LugarDAO.actualizarLugar(this);
-        } catch (PersistenciaException e) {
-            System.err.println("Error al guardar cambios: " + e.getMessage());
-            return false;
-        }
-    }
-
-    // Métodos para manejar juegos
     public boolean agregarJuego(Juego juego) {
         if (juego != null && !juegosDisponibles.contains(juego)) {
             juegosDisponibles.add(juego);
-            guardarCambios(); // Persistir cambios
             return true;
         }
         return false;
@@ -230,17 +183,14 @@ public class Lugar {
     public boolean eliminarJuego(Juego juego) {
         if (juego != null && juegosDisponibles.contains(juego)) {
             juegosDisponibles.remove(juego);
-            guardarCambios(); // Persistir cambios
             return true;
         }
         return false;
     }
 
-    // Métodos para manejar usuarios
     public boolean registrarUsuario(Usuario usuario) {
         if (usuario != null && !usuariosRegistrados.contains(usuario)) {
             usuariosRegistrados.add(usuario);
-            guardarCambios(); // Persistir cambios
             return true;
         }
         return false;
@@ -249,18 +199,15 @@ public class Lugar {
     public boolean quitarUsuario(Usuario usuario) {
         if (usuario != null && usuariosRegistrados.contains(usuario)) {
             usuariosRegistrados.remove(usuario);
-            guardarCambios(); // Persistir cambios
             return true;
         }
         return false;
     }
 
-    // Métodos para manejar calificaciones
     public boolean agregarCalificacion(Calificacion calificacion) {
         if (calificacion != null) {
             calificaciones.add(calificacion);
             actualizarCalificacionPromedio();
-            guardarCambios(); // Persistir cambios
             return true;
         }
         return false;
@@ -280,7 +227,6 @@ public class Lugar {
         this.calificacionPromedio = sumaCalificaciones / calificaciones.size();
     }
 
-    // Getters y setters
     public double obtenerCalificacionPromedio() {
         return this.calificacionPromedio;
     }
@@ -299,10 +245,6 @@ public class Lugar {
 
     public String getId() {
         return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
     }
 
     public String getNombre() {
@@ -333,35 +275,6 @@ public class Lugar {
         return calificacionPromedio;
     }
 
-    public void setCalificacionPromedio(double calificacionPromedio) {
-        this.calificacionPromedio = calificacionPromedio;
-    }
-
-    public List<Juego> getJuegosDisponibles() {
-        return juegosDisponibles;
-    }
-
-    public void setJuegosDisponibles(List<Juego> juegosDisponibles) {
-        this.juegosDisponibles = juegosDisponibles;
-    }
-
-    public List<Usuario> getUsuariosRegistrados() {
-        return usuariosRegistrados;
-    }
-
-    public void setUsuariosRegistrados(List<Usuario> usuariosRegistrados) {
-        this.usuariosRegistrados = usuariosRegistrados;
-    }
-
-    public List<Calificacion> getCalificaciones() {
-        return calificaciones;
-    }
-
-    public void setCalificaciones(List<Calificacion> calificaciones) {
-        this.calificaciones = calificaciones;
-    }
-
-    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -373,12 +286,10 @@ public class Lugar {
         return id.equals(lugar.id);
     }
 
-    @Override
     public int hashCode() {
         return Objects.hash(id);
     }
 
-    @Override
     public String toString() {
         return "Lugar{"
                 + "id='" + id + '\''

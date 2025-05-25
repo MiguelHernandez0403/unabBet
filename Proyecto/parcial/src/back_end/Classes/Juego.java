@@ -17,7 +17,6 @@ public class Juego {
     private boolean activo;
     private LocalDateTime fechaCreacion;
     
-    // Constructor para crear un nuevo juego
     public Juego(String nombre, String descripcion, double factorMultiplicador) {
         this.id = UUID.randomUUID().toString();
         this.nombre = nombre;
@@ -27,9 +26,7 @@ public class Juego {
         this.fechaCreacion = LocalDateTime.now();
     }
     
-    // Constructor para cargar juego existente desde JSON
-    public Juego(String id, String nombre, String descripcion, double factorMultiplicador, 
-                 boolean activo, LocalDateTime fechaCreacion) {
+    public Juego(String id, String nombre, String descripcion, double factorMultiplicador,boolean activo, LocalDateTime fechaCreacion) {
         this.id = id;
         this.nombre = nombre;
         this.descripcion = descripcion;
@@ -38,15 +35,6 @@ public class Juego {
         this.fechaCreacion = fechaCreacion != null ? fechaCreacion : LocalDateTime.now();
     }
     
-    // Constructor sin parámetros para GSON
-    public Juego() {
-        this.activo = true;
-        this.fechaCreacion = LocalDateTime.now();
-    }
-    
-    /**
-     * Crea un nuevo juego y lo guarda en el archivo JSON
-     */
     public boolean crearJuego(String nombre, String descripcion, double factorMultiplicador) {
         // Validaciones básicas
         if (nombre == null || nombre.trim().isEmpty()) {
@@ -72,7 +60,7 @@ public class Juego {
         this.fechaCreacion = LocalDateTime.now();
 
         try {
-            // Guardar el juego en el archivo JSON
+            // Guardar el juego en la base de datos
             return JuegoDAO.guardarJuego(this);
         } catch (PersistenciaException e) {
             System.err.println("Error al crear el juego: " + e.getMessage());
@@ -80,9 +68,6 @@ public class Juego {
         }
     }
     
-    /**
-     * Actualiza los datos del juego en el archivo JSON
-     */
     public boolean actualizarJuego(String nombre, String descripcion, double factorMultiplicador) {
         boolean actualizado = false;
         String nombreAnterior = this.nombre;
@@ -115,10 +100,10 @@ public class Juego {
 
         if (actualizado) {
             try {
-                // Actualizar los datos en el archivo JSON
-                boolean actualizadoJSON = JuegoDAO.actualizarJuego(this);
-                if (!actualizadoJSON) {
-                    // Si no se pudo actualizar en JSON, revertir cambios
+                // Actualizar los datos en la base de datos
+                boolean actualizadoBD = JuegoDAO.actualizarJuego(this);
+                if (!actualizadoBD) {
+                    // Si no se pudo actualizar en BD, revertir cambios
                     this.nombre = nombreAnterior;
                     this.descripcion = descripcionAnterior;
                     this.factorMultiplicador = factorAnterior;
@@ -138,9 +123,6 @@ public class Juego {
         return false;
     }
     
-    /**
-     * Elimina lógicamente el juego (marca como inactivo)
-     */
     public boolean eliminarJuego() {
         try {
             // En lugar de eliminar físicamente, marcar como inactivo
@@ -161,21 +143,6 @@ public class Juego {
         }
     }
     
-    /**
-     * Elimina físicamente el juego del archivo JSON
-     */
-    public boolean eliminarJuegoCompleto() {
-        try {
-            return JuegoDAO.eliminarJuegoFisico(this.id);
-        } catch (PersistenciaException e) {
-            System.err.println("Error al eliminar completamente el juego: " + e.getMessage());
-            return false;
-        }
-    }
-    
-    /**
-     * Reactiva un juego marcado como inactivo
-     */
     public boolean reactivarJuego() {
         if (this.activo) {
             return true; // Ya está activo
@@ -198,14 +165,11 @@ public class Juego {
         }
     }
     
-    /**
-     * Consulta y actualiza los datos del juego desde el archivo JSON
-     */
     public Juego consultarJuego() {
         try {
             Juego juegoActualizado = JuegoDAO.buscarPorId(this.id);
             if (juegoActualizado != null) {
-                // Actualizar los datos del objeto actual con los del archivo JSON
+                // Actualizar los datos del objeto actual con los de la BD
                 this.nombre = juegoActualizado.getNombre();
                 this.descripcion = juegoActualizado.getDescripcion();
                 this.factorMultiplicador = juegoActualizado.getFactorMultiplicador();
@@ -220,23 +184,6 @@ public class Juego {
         return this;
     }
     
-    /**
-     * Guarda los cambios actuales en el archivo JSON
-     */
-    public boolean guardarCambios() {
-        try {
-            return JuegoDAO.actualizarJuego(this);
-        } catch (PersistenciaException e) {
-            System.err.println("Error al guardar cambios: " + e.getMessage());
-            return false;
-        }
-    }
-    
-    // ========== MÉTODOS ESTÁTICOS ==========
-    
-    /**
-     * Busca un juego por ID en el archivo JSON
-     */
     public static Juego buscarPorId(String id) {
         try {
             return JuegoDAO.buscarPorId(id);
@@ -246,9 +193,6 @@ public class Juego {
         }
     }
     
-    /**
-     * Busca juegos por nombre en el archivo JSON
-     */
     public static List<Juego> buscarPorNombre(String nombre) {
         try {
             return JuegoDAO.buscarPorNombre(nombre);
@@ -258,9 +202,6 @@ public class Juego {
         }
     }
     
-    /**
-     * Obtiene todos los juegos del archivo JSON
-     */
     public static List<Juego> obtenerTodosLosJuegos() {
         try {
             return JuegoDAO.obtenerTodosLosJuegos();
@@ -270,9 +211,6 @@ public class Juego {
         }
     }
     
-    /**
-     * Obtiene solo los juegos activos del archivo JSON
-     */
     public static List<Juego> obtenerJuegosActivos() {
         try {
             return JuegoDAO.obtenerJuegosActivos();
@@ -282,9 +220,6 @@ public class Juego {
         }
     }
     
-    /**
-     * Obtiene juegos ordenados por factor multiplicador
-     */
     public static List<Juego> obtenerJuegosPorFactor() {
         try {
             return JuegoDAO.obtenerJuegosPorFactor();
@@ -294,16 +229,10 @@ public class Juego {
         }
     }
     
-    /**
-     * Verifica si existe un juego con el nombre especificado
-     */
     public static boolean existeJuego(String nombre) {
         return JuegoDAO.existeJuego(nombre);
     }
     
-    /**
-     * Cuenta el total de juegos
-     */
     public static int contarJuegos() {
         try {
             return JuegoDAO.contarJuegos();
@@ -313,9 +242,6 @@ public class Juego {
         }
     }
     
-    /**
-     * Cuenta solo los juegos activos
-     */
     public static int contarJuegosActivos() {
         try {
             return JuegoDAO.contarJuegosActivos();
@@ -325,66 +251,8 @@ public class Juego {
         }
     }
     
-    /**
-     * Obtiene juegos por rango de factor multiplicador
-     */
-    public static List<Juego> buscarPorRangoFactor(double minimo, double maximo) {
-        try {
-            return JuegoDAO.buscarPorRangoFactor(minimo, maximo);
-        } catch (PersistenciaException e) {
-            System.err.println("Error al buscar juegos por rango de factor: " + e.getMessage());
-            return new ArrayList<>();
-        }
-    }
-    
-    /**
-     * Obtiene los juegos más recientes
-     */
-    public static List<Juego> obtenerJuegosRecientes(int limite) {
-        try {
-            return JuegoDAO.obtenerJuegosRecientes(limite);
-        } catch (PersistenciaException e) {
-            System.err.println("Error al obtener juegos recientes: " + e.getMessage());
-            return new ArrayList<>();
-        }
-    }
-    
-    /**
-     * Obtiene estadísticas de los juegos
-     */
-    public static JuegoDAO.JuegoEstadisticas obtenerEstadisticas() {
-        try {
-            return JuegoDAO.obtenerEstadisticas();
-        } catch (PersistenciaException e) {
-            System.err.println("Error al obtener estadísticas: " + e.getMessage());
-            return null;
-        }
-    }
-    
-    // ========== MÉTODOS DE UTILIDAD ==========
-    
-    /**
-     * Calcula la ganancia potencial para una cantidad de apuesta
-     */
-    public double calcularGananciaPotencial(double cantidadApuesta) {
-        return cantidadApuesta * this.factorMultiplicador;
-    }
-    
-    /**
-     * Obtiene el estado del juego como texto
-     */
-    public String getEstadoTexto() {
-        return activo ? "Activo" : "Inactivo";
-    }
-    
-    // ========== GETTERS Y SETTERS ==========
-    
     public String getId() {
         return id;
-    }
-    
-    public void setId(String id) {
-        this.id = id;
     }
 
     public String getNombre() {
@@ -423,11 +291,13 @@ public class Juego {
         return fechaCreacion;
     }
     
-    public void setFechaCreacion(LocalDateTime fechaCreacion) {
-        this.fechaCreacion = fechaCreacion;
+    public double calcularGananciaPotencial(double cantidadApuesta) {
+        return cantidadApuesta * this.factorMultiplicador;
     }
     
-    // ========== MÉTODOS OBJECT ==========
+    public String getEstadoTexto() {
+        return activo ? "Activo" : "Inactivo";
+    }
     
     @Override
     public boolean equals(Object o) {
