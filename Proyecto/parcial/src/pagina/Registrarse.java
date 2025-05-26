@@ -6,7 +6,6 @@ package pagina;
 
 import back_end.Classes.Usuario;
 import back_end.Excepciones.PersistenciaException;
-import back_end.Classes.Usuario;
 import java.awt.Graphics;
 import java.awt.Image;
 import javax.swing.ImageIcon;
@@ -21,7 +20,8 @@ public class Registrarse extends javax.swing.JFrame {
         this.setContentPane(fondo);
         initComponents();
         setSize(1201, 718);
-
+        setLocationRelativeTo(null); // Centrar ventana
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
     }
 
     /**
@@ -213,70 +213,186 @@ public class Registrarse extends javax.swing.JFrame {
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+    
+    private void registrarUsuario() {
+        try {
+            // Obtener y validar datos del formulario
+            String correoTexto = correo_.getText().trim();
+            String contraseña = new String(cree_contraseña.getPassword());
+            String confirmarContraseña = new String(confirmar_contraseña.getPassword());
+            String nombreTexto = nombre.getText().trim();
+            String apellidoTexto = apellido.getText().trim();
+            String carreraTexto = carrera1.getText().trim();
+            String uidTexto = uid.getText().trim();
+            String semestreTexto = semestre.getText().trim();
 
+            // Validación de campos vacíos
+            if (!validarCamposVacios(correoTexto, contraseña, confirmarContraseña, 
+                                   nombreTexto, apellidoTexto, carreraTexto, uidTexto, semestreTexto)) {
+                return;
+            }
+
+            // Validar confirmación de contraseña
+            if (!validarConfirmacionContraseña(contraseña, confirmarContraseña)) {
+                return;
+            }
+
+            // Validar y convertir semestre
+            int semestreInt = validarSemestre(semestreTexto);
+            if (semestreInt == -1) {
+                return;
+            }
+
+            // Crear y registrar usuario
+            crearUsuario(uidTexto, nombreTexto, apellidoTexto, correoTexto, contraseña, carreraTexto, semestreInt);
+
+        } catch (Exception e) {
+            mostrarError("Error inesperado: " + e.getMessage());
+            e.printStackTrace(); // Para debugging
+        }
+    }
+    
+    private boolean validarCamposVacios(String... campos) {
+        for (String campo : campos) {
+            if (campo == null || campo.isEmpty()) {
+                mostrarAdvertencia("Por favor, complete todos los campos obligatorios.");
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    private boolean validarConfirmacionContraseña(String contraseña, String confirmarContraseña) {
+        if (!contraseña.equals(confirmarContraseña)) {
+            mostrarError("Las contraseñas no coinciden. Por favor, verifique e intente nuevamente.");
+            // Limpiar campos de contraseña
+            cree_contraseña.setText("");
+            confirmar_contraseña.setText("");
+            cree_contraseña.requestFocus();
+            return false;
+        }
+        return true;
+    }
+    
+    private int validarSemestre(String semestreTexto) {
+        try {
+            int semestreInt = Integer.parseInt(semestreTexto);
+            if (semestreInt < 1 || semestreInt > 10) {
+                mostrarAdvertencia("El semestre debe estar entre 1 y 10.");
+                semestre.requestFocus();
+                return -1;
+            }
+            return semestreInt;
+        } catch (NumberFormatException e) {
+            mostrarAdvertencia("Por favor, ingrese un número válido para el semestre.");
+            semestre.requestFocus();
+            return -1;
+        }
+    }
+    
+    private void crearUsuario(String uidTexto, String nombreTexto, String apellidoTexto, 
+                             String correoTexto, String contraseña, String carreraTexto, int semestreInt) {
+        try {
+            // Crear instancia del usuario
+            Usuario nuevoUsuario = new Usuario(uidTexto, nombreTexto, apellidoTexto, 
+                                             correoTexto, contraseña, carreraTexto, semestreInt);
+
+            // Intentar registrar el usuario (esto ejecuta todas las validaciones del backend)
+            boolean registroExitoso = nuevoUsuario.registrarse(nombreTexto, apellidoTexto, 
+                                                              correoTexto, contraseña, carreraTexto, semestreInt);
+
+            if (registroExitoso) {
+                mostrarExito();
+            } else {
+                mostrarError("No se pudo completar el registro. Intente nuevamente.");
+            }
+
+        } catch (IllegalArgumentException e) {
+            // Errores de validación específicos del backend
+            mostrarAdvertencia(e.getMessage());
+            enfocarCampoSegunError(e.getMessage());
+        } catch (PersistenciaException e) {
+            // Errores de persistencia de datos
+            mostrarError("Error al guardar los datos: " + e.getMessage());
+        } catch (Exception e) {
+            // Otros errores no previstos
+            mostrarError("Error del sistema: " + e.getMessage());
+        }
+    }
+    
+    private void enfocarCampoSegunError(String mensajeError) {
+        String mensaje = mensajeError.toLowerCase();
+        
+        if (mensaje.contains("correo")) {
+            correo_.requestFocus();
+        } else if (mensaje.contains("contraseña")) {
+            cree_contraseña.requestFocus();
+        } else if (mensaje.contains("nombre")) {
+            nombre.requestFocus();
+        } else if (mensaje.contains("apellido")) {
+            apellido.requestFocus();
+        } else if (mensaje.contains("carrera")) {
+            carrera1.requestFocus();
+        } else if (mensaje.contains("semestre")) {
+            semestre.requestFocus();
+        } else if (mensaje.contains("id universitario") || mensaje.contains("uid")) {
+            uid.requestFocus();
+        }
+    }
+    
+    private void mostrarExito() {
+        JOptionPane.showMessageDialog(this, 
+                "¡Cuenta creada exitosamente!\n\n" +
+                "Ya puede iniciar sesión con sus credenciales.", 
+                "Registro Exitoso", 
+                JOptionPane.INFORMATION_MESSAGE);
+        
+        // Limpiar formulario
+        limpiarFormulario();
+        
+        // Redirigir al login después de un breve delay
+        javax.swing.Timer timer = new javax.swing.Timer(1500, e -> {
+            try {
+                Login_1 ventanaLogin = new Login_1();
+                ventanaLogin.setVisible(true);
+                this.dispose();
+            } catch (Exception ex) {
+                mostrarError("Error al cargar la ventana de login: " + ex.getMessage());
+            }
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
+    
+    private void limpiarFormulario() {
+        correo_.setText("");
+        cree_contraseña.setText("");
+        confirmar_contraseña.setText("");
+        nombre.setText("");
+        apellido.setText("");
+        carrera1.setText("");
+        uid.setText("");
+        semestre.setText("");
+    }
+    
+    private void mostrarError(String mensaje) {
+        JOptionPane.showMessageDialog(this, mensaje, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+    
+    private void mostrarAdvertencia(String mensaje) {
+        JOptionPane.showMessageDialog(this, mensaje, "Advertencia", JOptionPane.WARNING_MESSAGE);
+    }
+    
     private void cree_contraseñaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cree_contraseñaActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_cree_contraseñaActionPerformed
 
     private void crear_cuentaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_crear_cuentaActionPerformed
-        // TODO add your handling code here:
+        registrarUsuario();
     }//GEN-LAST:event_crear_cuentaActionPerformed
 
     private void crear_cuentaMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_crear_cuentaMouseClicked
-        // Obtener datos del formulario
-        String correo = correo_.getText().trim();
-        String contraseña = new String(cree_contraseña.getPassword());
-        String confirmarContraseña = new String(confirmar_contraseña.getPassword());
-
-        // Por ahora usamos datos temporales (después los obtienes de campos adicionales)
-        String uid = "temp_uid"; // Obtener del campo UID
-        String nombre = "Nombre"; // Obtener del campo nombre
-        String apellido = "Apellido"; // Obtener del campo apellido
-        String carrera = "Ingeniería"; // Obtener del combobox
-        int semestre = 1; // Obtener del spinner
-
-        // Validaciones básicas
-        if (correo.isEmpty() || contraseña.isEmpty() || confirmarContraseña.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Por favor, complete todos los campos",
-                    "Campos vacíos", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        if (!contraseña.equals(confirmarContraseña)) {
-            JOptionPane.showMessageDialog(this, "Las contraseñas no coinciden",
-                    "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        try {
-            // Crear nuevo usuario usando el back-end
-            Usuario nuevoUsuario = new Usuario(uid, nombre, apellido, correo, contraseña, carrera, semestre);
-
-            // Intentar registrar el usuario
-            boolean registroExitoso = nuevoUsuario.registrarse(nombre, apellido, correo, contraseña, carrera, semestre);
-
-            if (registroExitoso) {
-                JOptionPane.showMessageDialog(this, "¡Cuenta creada exitosamente!",
-                        "Registro exitoso", JOptionPane.INFORMATION_MESSAGE);
-
-                // Redirigir al login
-                Login_1 ventanaLogin = new Login_1();
-                ventanaLogin.setVisible(true);
-                this.dispose();
-            } else {
-                JOptionPane.showMessageDialog(this, "Error al crear la cuenta",
-                        "Error", JOptionPane.ERROR_MESSAGE);
-            }
-
-        } catch (IllegalArgumentException e) {
-            // Errores de validación (formato de correo, contraseña débil, etc.)
-            JOptionPane.showMessageDialog(this, e.getMessage(),
-                    "Error de validación", JOptionPane.WARNING_MESSAGE);
-        } catch (Exception e) {
-            // Otros errores (base de datos, etc.)
-            JOptionPane.showMessageDialog(this, "Error del sistema: " + e.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
-        }
+        
     }//GEN-LAST:event_crear_cuentaMouseClicked
 
     private void confirmar_contraseñaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_confirmar_contraseñaActionPerformed
@@ -344,15 +460,21 @@ public class Registrarse extends javax.swing.JFrame {
     private javax.swing.JTextField uid;
     // End of variables declaration//GEN-END:variables
     class FondoPanel extends JPanel {
-
         private Image imagen;
 
         @Override
         public void paint(Graphics g) {
-            imagen = new ImageIcon(getClass().getResource("/icons/fondo_login.png")).getImage();
-            g.drawImage(imagen, 0, 0, getWidth(), getHeight(), this);
-            setOpaque(false);
-            super.paint(g);
+            try {
+                imagen = new ImageIcon(getClass().getResource("/icons/fondo_login.png")).getImage();
+                g.drawImage(imagen, 0, 0, getWidth(), getHeight(), this);
+                setOpaque(false);
+                super.paint(g);
+            } catch (Exception e) {
+                // Si no se encuentra la imagen, usar fondo sólido
+                setBackground(new java.awt.Color(240, 240, 240));
+                setOpaque(true);
+                super.paint(g);
+            }
         }
     }
 }

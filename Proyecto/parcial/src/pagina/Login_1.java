@@ -4,6 +4,7 @@
  */
 package pagina;
 
+import back_end.Classes.SessionManager;
 import back_end.Classes.Usuario;
 import back_end.Excepciones.PersistenciaException;
 import java.awt.Graphics;
@@ -14,6 +15,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 
 public class Login_1 extends javax.swing.JFrame {
 
@@ -24,6 +26,10 @@ public class Login_1 extends javax.swing.JFrame {
         this.setContentPane(fondo);
         initComponents();
         setSize(1201, 718);
+        setLocationRelativeTo(null); 
+        configurarEventos(); 
+        
+        configurarHoverRegistro();
     }
     
     private void configurarEventos() {
@@ -60,67 +66,116 @@ public class Login_1 extends javax.swing.JFrame {
         });
     }
     
+    private void configurarHoverRegistro() {
+        registarte.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                registarte.setForeground(new java.awt.Color(0, 51, 153));
+                setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            }
+            
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                registarte.setForeground(new java.awt.Color(0, 0, 0));
+                setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+            }
+        });
+    }
+    
     private void realizarLogin() {
         // Evitar múltiples intentos simultáneos
         if (intentandoLogin) {
             return;
         }
 
+        String correo = username.getText().trim();
+        String contraseña = new String(password.getPassword());
+
+        // Validar campos vacíos
+        if (correo.isEmpty()) {
+            mostrarError("Por favor, ingrese su correo electrónico", "Campo vacío");
+            username.requestFocus();
+            return;
+        }
+
+        if (contraseña.isEmpty()) {
+            mostrarError("Por favor, ingrese su contraseña", "Campo vacío");
+            password.requestFocus();
+            return;
+        }
+
+        // Validar formato de correo básico
+        if (!validarFormatoCorreo(correo)) {
+            mostrarError("El formato del correo electrónico no es válido", "Correo inválido");
+            username.requestFocus();
+            return;
+        }
+
+        // Cambiar estado del botón
         intentandoLogin = true;
         login.setEnabled(false);
         login.setText("Verificando...");
 
         // Usar SwingWorker para no bloquear la UI
-        SwingUtilities.invokeLater(() -> {
-            try {
-                String correo = username.getText().trim();
-                String contraseña = new String(password.getPassword());
-
-                // Validar campos vacíos
-                if (correo.isEmpty()) {
-                    mostrarError("Por favor, ingrese su correo electrónico", "Campo vacío");
-                    username.requestFocus();
-                    return;
-                }
-
-                if (contraseña.isEmpty()) {
-                    mostrarError("Por favor, ingrese su contraseña", "Campo vacío");
-                    password.requestFocus();
-                    return;
-                }
-
-                // Validar formato de correo básico
-                if (!validarFormatoCorreo(correo)) {
-                    mostrarError("El formato del correo electrónico no es válido", "Correo inválido");
-                    username.requestFocus();
-                    return;
-                }
-
+        SwingWorker<Usuario, Void> worker = new SwingWorker<Usuario, Void>() {
+            @Override
+            protected Usuario doInBackground() throws Exception {
                 // Intentar iniciar sesión
-                Usuario usuarioLogueado = Usuario.iniciarSesion(correo, contraseña);
-
-                if (usuarioLogueado != null) {
-                    
-                    // Abrir ventana principal
-                    abrirVentanaPrincipal(usuarioLogueado);
-                } else {
-                    // Credenciales incorrectas
-                    mostrarError("Correo o contraseña incorrectos.\nVerifique sus datos e intente nuevamente.", "Error de autenticación");
-                    limpiarCampos();
-                    username.requestFocus();
-                }
-
-            } catch (PersistenciaException e) {
-                mostrarError("Error al conectar con la base de datos:\n" + e.getMessage(), "Error de Base de Datos");
-                System.err.println("Error de persistencia: " + e.getMessage());
-            } catch (Exception e) {
-                mostrarError("Error inesperado del sistema:\n" + e.getMessage(), "Error del Sistema");
-                e.printStackTrace();
-            } finally {
-                // Restaurar estado del botón
-                restaurarBotonLogin();
+                return Usuario.iniciarSesion(correo, contraseña);
             }
-        });
+
+            @Override
+            protected void done() {
+                try {
+                    Usuario usuarioLogueado = get();
+
+                    if (usuarioLogueado != null) {
+                        // Establecer el usuario en el SessionManager
+                        SessionManager.getInstance().setUsuarioActual(usuarioLogueado);
+                        
+                        // Mostrar mensaje de éxito
+                        JOptionPane.showMessageDialog(Login_1.this, 
+                            "¡Bienvenido/a " + usuarioLogueado.getNombre() + "!", 
+                            "Inicio de sesión exitoso", 
+                            JOptionPane.INFORMATION_MESSAGE);
+                        
+                        // Abrir ventana principal
+                        abrirVentanaPrincipal(usuarioLogueado);
+                    } else {
+                        // Credenciales incorrectas
+                        mostrarError("Correo o contraseña incorrectos.\nVerifique sus datos e intente nuevamente.", 
+                                   "Error de autenticación");
+                        limpiarCampos();
+                        username.requestFocus();
+                    }
+
+                } catch (java.util.concurrent.ExecutionException e) {
+                    // Obtener la causa real de la excepción
+                    Throwable causa = e.getCause();
+                    if (causa instanceof PersistenciaException) {
+                        mostrarError("Error al conectar con la base de datos:\n" + causa.getMessage(), 
+                                   "Error de Base de Datos");
+                        System.err.println("Error de persistencia: " + causa.getMessage());
+                    } else {
+                        mostrarError("Error inesperado del sistema:\n" + causa.getMessage(), 
+                                   "Error del Sistema");
+                        causa.printStackTrace();
+                    }
+                } catch (InterruptedException e) {
+                    mostrarError("La operación fue interrumpida", "Operación Cancelada");
+                    Thread.currentThread().interrupt(); // Restaurar el estado de interrupción
+                } catch (Exception e) {
+                    mostrarError("Error inesperado del sistema:\n" + e.getMessage(), 
+                               "Error del Sistema");
+                    e.printStackTrace();
+                } finally {
+                    // Restaurar estado del botón
+                    restaurarBotonLogin();
+                }
+            }
+        };
+
+        worker.execute();
     }
     
     private boolean validarFormatoCorreo(String correo) {
@@ -130,11 +185,24 @@ public class Login_1 extends javax.swing.JFrame {
     
     private void abrirVentanaPrincipal(Usuario usuario) {
         try {
-            Lugares_inicio ventana = new Lugares_inicio(usuario);
-            ventana.setVisible(true);
-            this.dispose();
+            // Crear y mostrar la ventana principal
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    Lugares_inicio ventana = new Lugares_inicio(usuario);
+                    ventana.setVisible(true);
+                    this.dispose(); // Cerrar la ventana de login
+                } catch (Exception e) {
+                    mostrarError("Error al abrir la ventana principal:\n" + e.getMessage(), 
+                               "Error de Sistema");
+                    // No restaurar el botón aquí porque ya estamos en el EDT
+                    login.setEnabled(true);
+                    login.setText("Log in");
+                    intentandoLogin = false;
+                }
+            });
         } catch (Exception e) {
-            mostrarError("Error al abrir la ventana principal:\n" + e.getMessage(), "Error de Sistema");
+            mostrarError("Error al abrir la ventana principal:\n" + e.getMessage(), 
+                       "Error de Sistema");
             restaurarBotonLogin();
         }
     }
@@ -145,9 +213,11 @@ public class Login_1 extends javax.swing.JFrame {
     }
 
     private void restaurarBotonLogin() {
-        login.setEnabled(true);
-        login.setText("Log in");
-        intentandoLogin = false;
+        SwingUtilities.invokeLater(() -> {
+            login.setEnabled(true);
+            login.setText("Log in");
+            intentandoLogin = false;
+        });
     }
     
     private void mostrarError(String mensaje, String titulo) {
@@ -314,17 +384,7 @@ public class Login_1 extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_registarteMouseClicked
 
-    private void registarteMouseEntered(java.awt.event.MouseEvent evt) {
-        
-        registarte.setForeground(new java.awt.Color(0, 51, 153)); 
-        
-    }
     
-    private void registarteMouseExited(java.awt.event.MouseEvent evt) {
-        
-        registarte.setForeground(new java.awt.Color(0, 102, 204));
-        
-    }
 
     
     /**
